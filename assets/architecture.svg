@@ -36,7 +36,7 @@
 <line x1="580" y1="163" x2="580" y2="201" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
 <line x1="580" y1="275" x2="580" y2="311" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
 <line x1="580" y1="389" x2="580" y2="460" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
-<text x="598" y="428" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="start" font-weight="normal" >on recovery and rollback</text>
+<text x="562" y="428" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#57606a" text-anchor="end" font-weight="normal" >on recovery and rollback</text>
 <line x1="772" y1="352" x2="911" y2="352" stroke="#8a939c" stroke-width="2.4" marker-end="url(#ag)" stroke-dasharray="7,6"/>
 <line x1="580" y1="615" x2="580" y2="700" stroke="#444" stroke-width="2.4"/>
 <line x1="150" y1="700" x2="1040" y2="700" stroke="#444" stroke-width="2.4"/>
@@ -47,7 +47,7 @@
 <line x1="1040" y1="700" x2="1040" y2="738" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
 <path d="M390,352 L80,352 Q66,352 66,366 L66,686 Q66,700 80,700 L142,700" fill="none" stroke="#8a939c" stroke-width="2.4" marker-end="url(#ag)"/>
 <text x="84" y="676" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#8a939c" text-anchor="start" font-weight="normal" >normal step calls</text>
-<path d="M830,465 L830,392" fill="none" stroke="#555" stroke-width="2.4" marker-end="url(#ab)" stroke-dasharray="7,6"/>
-<text x="846" y="432" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#57606a" text-anchor="start" font-weight="normal" >landed / not landed / unknown</text>
+<path d="M730,465 L730,392" fill="none" stroke="#555" stroke-width="2.4" marker-end="url(#ab)" stroke-dasharray="7,6"/>
+<text x="746" y="432" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#57606a" text-anchor="start" font-weight="normal" >landed / not landed / unknown</text>
 <text x="28" y="916" font-family="Menlo, Monaco, monospace" font-size="18" fill="#6e7781" text-anchor="start" font-weight="normal" >github.com/netsatsawat/did-it-land</text>
 </svg>
