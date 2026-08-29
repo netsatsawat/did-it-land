@@ -44,6 +44,21 @@
           "minItems": 1,
           "items": { "$ref": "#/$defs/rule" },
           "description": "ordered rules; first match wins, default is unknown"
+        },
+        "confirm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["request", "interpret"],
+          "properties": {
+            "request": { "$ref": "#/$defs/request" },
+            "interpret": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/rule" }
+            },
+            "notes": { "type": "string" }
+          },
+          "description": "second, lag-free question asked only when the primary probe answers not_landed; its verdict wins. Closes read-after-write gaps such as search indexing lag."
         }
       },
       "allOf": [
@@ -140,7 +155,7 @@
             "where": {
               "type": "object",
               "additionalProperties": {},
-              "description": "when the json_path target is an array, keep only elements whose named fields equal these values before applying count_gte"
+              "description": "when the json_path target is an array, keep only elements whose fields equal these values before applying count_gte; keys may be dotted paths into each element, for example metadata.order_id"
             }
           }
         },

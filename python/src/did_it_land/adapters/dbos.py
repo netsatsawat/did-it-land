@@ -94,7 +94,13 @@ class _Step:
 
 @dataclass
 class Saga:
-    """A record of completed effects that can be walked back on failure."""
+    """A record of completed effects that can be walked back on failure.
+
+    The journal lives in process memory. It survives an exception inside the
+    workflow, which is the case it exists for, and under a deterministic-replay
+    engine the record() calls are replayed on recovery. A bare process crash with
+    no replaying engine loses it, so if you need the journal to outlive the
+    process, persist each recorded context in your engine's own store."""
 
     _steps: list[_Step] = field(default_factory=list)
 

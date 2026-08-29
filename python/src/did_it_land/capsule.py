@@ -50,11 +50,19 @@ class Rule:
 
 
 @dataclass(frozen=True)
+class Confirm:
+    request: Request
+    interpret: list[Rule]
+    notes: str | None = None
+
+
+@dataclass(frozen=True)
 class Probe:
     kind: str
     handler: str | None = None
     request: Request | None = None
     interpret: list[Rule] = field(default_factory=list)
+    confirm: Confirm | None = None
 
 
 @dataclass(frozen=True)
@@ -139,7 +147,17 @@ def _probe_from(doc: dict) -> Probe:
     if not raw_rules:
         raise CapsuleError(f"{where}.interpret: an http probe needs at least one rule")
     rules = [_rule_from(r, f"{where}.interpret[{i}]") for i, r in enumerate(raw_rules)]
-    return Probe(kind=kind, request=request, interpret=rules)
+    confirm = None
+    if doc.get("confirm") is not None:
+        cdoc = doc["confirm"]
+        cwhere = f"{where}.confirm"
+        creq = _request_from(_require(cdoc, "request", cwhere), f"{cwhere}.request")
+        craw = _require(cdoc, "interpret", cwhere)
+        if not craw:
+            raise CapsuleError(f"{cwhere}.interpret: needs at least one rule")
+        crules = [_rule_from(r, f"{cwhere}.interpret[{i}]") for i, r in enumerate(craw)]
+        confirm = Confirm(request=creq, interpret=crules, notes=cdoc.get("notes"))
+    return Probe(kind=kind, request=request, interpret=rules, confirm=confirm)
 
 
 def _compensation_from(doc: dict | None) -> Compensation | None:

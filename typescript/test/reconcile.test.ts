@@ -41,7 +41,7 @@ test("bundled corpus has the four capsules", () => {
 
 test("stripe probe maps responses to statuses", async () => {
   const capsule = bundled().get("stripe.charge");
-  const path = "/v1/payment_intents/search";
+  const empty: Response = { statusCode: 200, body: { data: [] } };
   const cases: [Response, string][] = [
     [{ statusCode: 200, body: { data: [{ id: "pi_1", status: "succeeded" }] } }, "landed"],
     [
@@ -49,14 +49,41 @@ test("stripe probe maps responses to statuses", async () => {
       "not_landed",
     ],
     [{ statusCode: 200, body: { data: [{ id: "pi_1", status: "processing" }] } }, "unknown"],
-    [{ statusCode: 200, body: { data: [] } }, "not_landed"],
+    [empty, "not_landed"],
     [{ statusCode: 503, body: {} }, "unknown"],
   ];
   for (const [resp, expected] of cases) {
-    const t = route("GET", path, resp);
+    const t = new Scripted(
+      new Map([
+        ["GET /v1/payment_intents/search", resp],
+        ["GET /v1/payment_intents", empty],
+      ]),
+    );
     const outcome = await reconcile(capsule, { order_id: "ORD-1" }, t);
     assert.equal(outcome.status, expected, `status ${resp.statusCode}`);
   }
+});
+
+test("confirm rescues a lagging search and carries the id", async () => {
+  const capsule = bundled().get("stripe.charge");
+  const t = new Scripted(
+    new Map([
+      ["GET /v1/payment_intents/search", { statusCode: 200, body: { data: [] } }],
+      [
+        "GET /v1/payment_intents",
+        {
+          statusCode: 200,
+          body: {
+            data: [{ id: "pi_lag", status: "succeeded", metadata: { order_id: "ORD-1" } }],
+          },
+        },
+      ],
+    ]),
+  );
+  const outcome = await reconcile(capsule, { order_id: "ORD-1" }, t);
+  assert.equal(outcome.status, "landed");
+  assert.equal(outcome.evidence?.confirmed, true);
+  assert.deepEqual(outcome.evidence?.ids, ["pi_lag"]);
 });
 
 test("s3 probe reads 404 as landed", async () => {

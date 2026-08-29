@@ -26,18 +26,51 @@ class TestHttpProbe(unittest.TestCase):
 
     def test_stripe_probe_results(self):
         capsule = self.reg.get("stripe.charge")
-        path = "/v1/payment_intents/search"
+        search = ("GET", "/v1/payment_intents/search")
+        listing = ("GET", "/v1/payment_intents")
+        empty = Response(200, {"data": []})
         cases = [
             (Response(200, {"data": [{"id": "pi_1", "status": "succeeded"}]}), "landed"),
             (Response(200, {"data": [{"id": "pi_1", "status": "requires_payment_method"}]}),
                 "not_landed"),
             (Response(200, {"data": [{"id": "pi_1", "status": "processing"}]}), "unknown"),
-            (Response(200, {"data": []}), "not_landed"),
+            (empty, "not_landed"),
             (Response(503, {}), "unknown")]
         for resp, expected in cases:
-            t = ScriptedTransport({("GET", path): resp})
+            t = ScriptedTransport({search: resp, listing: empty})
             outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
             self.assertEqual(outcome.status, expected, msg=f"body {resp.body}")
+
+    def test_confirm_rescues_a_lagging_search(self):
+        # Search has not indexed the charge yet, but the lag-free List API has it.
+        # The capsule must answer landed, never green-light the double charge.
+        capsule = self.reg.get("stripe.charge")
+        landed_intent = {
+            "id": "pi_lagged",
+            "status": "succeeded",
+            "metadata": {"order_id": "ORD-1"}}
+        t = ScriptedTransport({
+            ("GET", "/v1/payment_intents/search"): Response(200, {"data": []}),
+            ("GET", "/v1/payment_intents"): Response(200, {"data": [landed_intent]})})
+        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        self.assertEqual(outcome.status, "landed")
+        self.assertTrue(outcome.evidence["confirmed"])
+        self.assertEqual(outcome.evidence["ids"], ["pi_lagged"],
+                         "the id must flow so unwind needs no second lookup")
+
+    def test_confirm_filters_by_the_callers_order_id(self):
+        # Someone else's charge in the recent list must not read as ours.
+        capsule = self.reg.get("stripe.charge")
+        other = {
+            "id": "pi_other",
+            "status": "succeeded",
+            "metadata": {"order_id": "SOMEONE-ELSE"}}
+        t = ScriptedTransport({
+            ("GET", "/v1/payment_intents/search"): Response(200, {"data": []}),
+            ("GET", "/v1/payment_intents"): Response(200, {"data": [other]})})
+        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        self.assertEqual(outcome.status, "not_landed")
+        self.assertTrue(outcome.evidence["confirmed"])
 
     def test_stripe_probe_surfaces_duplicates(self):
         capsule = self.reg.get("stripe.charge")
@@ -50,6 +83,7 @@ class TestHttpProbe(unittest.TestCase):
         outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
         self.assertEqual(outcome.status, "landed")
         self.assertEqual(outcome.evidence["matched"], 2, "two succeeded intents is a duplicate")
+        self.assertEqual(outcome.evidence["ids"], ["pi_1", "pi_2"])
 
     def test_s3_probe_results(self):
         capsule = self.reg.get("s3.delete_object")

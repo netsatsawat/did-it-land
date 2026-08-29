@@ -7,6 +7,7 @@ land" after an ambiguous crash; unwind runs the inverse. See docs/CAPSULE-SCHEMA
 from __future__ import annotations
 
 from . import native
+from .adapters.dbos import Saga, Skipped, UnknownOutcome, guard
 from .capsule import (
     SCHEMA_VERSION,
     Capsule,
@@ -33,11 +34,15 @@ __all__ = [
     "HttpxTransport",
     "Outcome",
     "Registry",
+    "Saga",
+    "Skipped",
+    "UnknownOutcome",
     "Response",
     "Transport",
     "TransportError",
     "bundled",
     "capsule_from_dict",
+    "guard",
     "load_capsule",
     "load_dir",
     "native",
