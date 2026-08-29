@@ -1,0 +1,46 @@
+{
+  "name": "effectkit",
+  "version": "0.1.0",
+  "description": "Know whether a side-effect landed, and how to reverse it: a corpus of per-vendor effect capsules for durable and saga workflows.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Satsawat Natakarnkitkul",
+  "homepage": "https://github.com/netsatsawat/effectkit",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/netsatsawat/effectkit.git",
+    "directory": "typescript"
+  },
+  "keywords": [
+    "durable-execution",
+    "saga",
+    "idempotency",
+    "reconciliation",
+    "agents"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}

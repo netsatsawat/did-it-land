@@ -1,0 +1,25 @@
+# effectkit
+
+> Your durable worker crashed mid-tool-call. Did the charge actually fire, and how do you
+> reverse it? effectkit is the per-vendor knowledge that answers both, as data.
+
+```ts
+import { bundled, reconcile, unwind } from "effectkit";
+
+const charge = bundled().get("stripe.charge");
+
+// After an ambiguous crash: did it land?
+const outcome = await reconcile(charge, { order_id: "ORD-1" }, stripeTransport);
+if (outcome.status === "landed") {
+  // the charge already happened, skip the retry
+}
+
+await unwind(charge, { payment_intent_id: "pi_123" }, stripeTransport);
+```
+
+v1 ships four capsules: `stripe.charge`, `s3.delete_object`, `github.merge_pr`, and
+`postgres.insert`. Same corpus as the Python package. Full docs in the repository.
+
+Homepage and docs: https://github.com/netsatsawat/effectkit
+
+Written by Satsawat Natakarnkitkul. License: MIT.

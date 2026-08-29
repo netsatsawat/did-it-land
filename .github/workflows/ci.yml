@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: install
+        run: pip install -e ./python
+      - name: corpus mirror in sync
+        run: python scripts/sync_corpus.py --check
+      - name: ts corpus in sync
+        run: python scripts/build_ts_corpus.py --check
+      - name: tests
+        run: cd python && python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: every README number matches its artifact
+        run: python scripts/verify_readme_claims.py
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: install
+        run: cd typescript && npm ci
+      - name: tests
+        run: cd typescript && npm test
+      - name: build
+        run: cd typescript && npm run build

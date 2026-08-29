@@ -1,0 +1,38 @@
+id: postgres.insert
+provider: postgres
+operation: insert
+schema_version: "1"
+summary: >
+  Insert a row through a natural key. Answer whether the row committed after a crash,
+  and reverse it with a keyed delete when nothing depends on it yet.
+
+idempotency:
+  strategy: natural_key
+  keys: [table, key_column, key_value]
+  notes: >
+    The row carries a business key backed by a unique constraint. Re-running the
+    insert then fails on the constraint rather than duplicating, which is what makes
+    the natural key a safe idempotency handle.
+
+probe:
+  kind: native
+  handler: postgres_row_exists
+
+reversibility:
+  class: conditionally_reversible
+  condition: >
+    The row is addressable by its natural key and nothing else references it yet, so
+    a keyed delete returns the table to its prior state. Once dependent rows exist the
+    delete is no longer a clean reversal.
+
+compensation:
+  kind: native
+  handler: postgres_delete_by_key
+  notes: >
+    Delete the row by its natural key inside its own transaction.
+
+notes: >
+  This capsule is native rather than http because the operation speaks the Postgres
+  wire protocol through a driver, not REST. The probe and compensation are resolved to
+  per-language handlers keyed by id, while the corpus stays the source of the meaning.
+source: https://www.postgresql.org/docs/current/tutorial-transactions.html

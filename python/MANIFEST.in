@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+recursive-include src/effectkit/_corpus *.yaml
+prune tests
+prune examples
+global-exclude __pycache__ *.pyc
