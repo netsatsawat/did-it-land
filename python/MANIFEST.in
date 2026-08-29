@@ -1,6 +1,6 @@
 include LICENSE
 include README.md
-recursive-include src/effectkit/_corpus *.yaml
+recursive-include src/did_it_land/_corpus *.yaml
 prune tests
 prune examples
 global-exclude __pycache__ *.pyc

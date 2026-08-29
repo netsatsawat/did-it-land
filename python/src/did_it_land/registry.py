@@ -52,7 +52,7 @@ def load_dir(path: str | Path) -> Registry:
 
 def bundled() -> Registry:
     """Load the corpus packaged with the library."""
-    root = resources.files("effectkit").joinpath("_corpus")
+    root = resources.files("did_it_land").joinpath("_corpus")
     caps = []
     for entry in sorted(root.iterdir(), key=lambda p: p.name):
         if entry.name.endswith(".yaml"):

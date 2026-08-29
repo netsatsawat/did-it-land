@@ -95,7 +95,7 @@ test("unwind: stripe refunds, github is irreversible", async () => {
   const comp = await unwind(reg.get("stripe.charge"), { payment_intent_id: "pi_1" }, stripe);
   assert.equal(comp.status, "compensated");
   assert.equal(stripe.seen[0].query.payment_intent, "pi_1");
-  assert.equal(stripe.seen[0].headers["Idempotency-Key"], "effectkit-refund-pi_1");
+  assert.equal(stripe.seen[0].headers["Idempotency-Key"], "did-it-land-refund-pi_1");
 
   const merge = await unwind(reg.get("github.merge_pr"), {});
   assert.equal(merge.status, "irreversible");

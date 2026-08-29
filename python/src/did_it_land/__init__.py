@@ -1,4 +1,4 @@
-"""effectkit: know whether a side-effect landed, and how to reverse it.
+"""did-it-land: know whether a side-effect landed, and how to reverse it.
 
 A corpus of per-vendor effect capsules plus a thin runtime. reconcile answers "did it
 land" after an ambiguous crash; unwind runs the inverse. See docs/CAPSULE-SCHEMA.md.

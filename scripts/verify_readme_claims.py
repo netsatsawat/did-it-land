@@ -1,6 +1,6 @@
 """Recompute the numbers the README states and fail if any has drifted.
 
-Every count effectkit puts in front of a reader is derived from a committed artifact, so
+Every count did-it-land puts in front of a reader is derived from a committed artifact, so
 CI can catch a number that stopped being true. This script is stdlib-only on purpose, so
 it runs with no model stack and no third-party packages.
 """

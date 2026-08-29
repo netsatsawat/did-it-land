@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import unittest
 
-from effectkit.capsule import Request
-from effectkit.reconcile import EffectError, reconcile, unwind
-from effectkit.registry import bundled
-from effectkit.transport import Response
+from did_it_land.capsule import Request
+from did_it_land.reconcile import EffectError, reconcile, unwind
+from did_it_land.registry import bundled
+from did_it_land.transport import Response
 
 
 class ScriptedTransport:
@@ -99,7 +99,7 @@ class TestUnwind(unittest.TestCase):
         self.assertEqual(t.seen[0].query["payment_intent"], "pi_1")
         self.assertEqual(
             t.seen[0].headers["Idempotency-Key"],
-            "effectkit-refund-pi_1",
+            "did-it-land-refund-pi_1",
             "a crashed compensation must not refund twice either")
 
     def test_github_merge_is_irreversible(self):

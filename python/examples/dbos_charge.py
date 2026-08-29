@@ -1,18 +1,18 @@
-"""Reference integration: effectkit inside a DBOS workflow.
+"""Reference integration: did-it-land inside a DBOS workflow.
 
-This is the pattern effectkit is built for. DBOS resumes a crashed workflow from its last
-completed step. The charge step wraps its side effect in effectkit's guard, so on recovery
+This is the pattern did-it-land is built for. DBOS resumes a crashed workflow from its last
+completed step. The charge step wraps its side effect in did-it-land's guard, so on recovery
 it probes whether the charge already landed before charging again. A failed workflow walks
 its completed effects back with a Saga.
 
 Run it against a real DBOS install and Postgres:
 
-    pip install "effectkit[dbos,http]" dbos
+    pip install "did-it-land[dbos,http]" dbos
     export DBOS_DATABASE_URL=postgresql://...       # your local Postgres
     python examples/dbos_charge.py
 
 Without DBOS installed it prints how to get it and exits, so the file is safe to open and
-read anywhere. The offline demo (`effectkit demo`) proves the same logic with no setup.
+read anywhere. The offline demo (`did-it-land demo`) proves the same logic with no setup.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ from __future__ import annotations
 import os
 import sys
 
-from effectkit import HttpxTransport, bundled
-from effectkit.adapters.dbos import Saga, guard
+from did_it_land import HttpxTransport, bundled
+from did_it_land.adapters.dbos import Saga, guard
 
 
 def _stripe() -> HttpxTransport:
@@ -34,9 +34,9 @@ def main() -> int:
         from dbos import DBOS
     except ImportError:
         print("This example needs DBOS. Install it with:")
-        print('  pip install "effectkit[dbos,http]" dbos')
+        print('  pip install "did-it-land[dbos,http]" dbos')
         print("Then set DBOS_DATABASE_URL to a Postgres instance and run again.")
-        print("The logic without DBOS is shown by: effectkit demo")
+        print("The logic without DBOS is shown by: did-it-land demo")
         return 0
 
     DBOS()

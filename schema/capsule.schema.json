@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://effectkit.dev/schema/capsule.schema.json",
-  "title": "effectkit capsule",
+  "$id": "https://github.com/netsatsawat/did-it-land/blob/main/schema/capsule.schema.json",
+  "title": "did-it-land capsule",
   "description": "One external operation, with the knowledge needed to answer 'did it land' and 'how do I reverse it'. See docs/CAPSULE-SCHEMA.md.",
   "type": "object",
   "additionalProperties": false,

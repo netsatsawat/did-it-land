@@ -1,4 +1,4 @@
-"""The two operations at the heart of effectkit.
+"""The two operations at the heart of did_it_land.
 
 reconcile answers "did this land" by running a capsule's probe. unwind runs the
 inverse. Both are deterministic given the capsule and the call context. Neither asks a

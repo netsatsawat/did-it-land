@@ -1,8 +1,8 @@
 """A runnable demo that needs no keys and no network.
 
-It stages the exact failure effectkit exists for: a durable worker charges a customer,
+It stages the exact failure did-it-land exists for: a durable worker charges a customer,
 then crashes before it can record that the charge went through. On recovery the naive
-path double-charges, because the idempotency key died with the crash. The effectkit path
+path double-charges, because the idempotency key died with the crash. The did-it-land path
 asks the stripe.charge capsule "did this land" using the order id, which the workflow
 always has, and skips the second charge.
 
@@ -93,7 +93,7 @@ def run_demo() -> dict:
         out.append(line)
         print(line)
 
-    say("=== effectkit demo: did my charge land? ===")
+    say("=== did-it-land demo: did my charge land? ===")
     say("A durable worker charges a customer, then crashes before recording the result.")
     say("")
 
@@ -109,10 +109,10 @@ def run_demo() -> dict:
     say(f"  result    : {naive_count} charges for {order_id}, the customer is double charged")
     say("")
 
-    # Run B: recovery with effectkit. Probe by the order id, which the workflow owns.
+    # Run B: recovery with did_it_land. Probe by the order id, which the workflow owns.
     fixed = FakeStripe()
     _charge(fixed, order_id, idem_key="attempt-1-key")
-    say("Run B, recovery with effectkit")
+    say("Run B, recovery with did-it-land")
     say("  attempt 1 : charged, then the worker crashed before the checkpoint")
     outcome = reconcile(capsule, {"order_id": order_id}, transport=fixed)
     say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {outcome.status}")
@@ -129,7 +129,7 @@ def run_demo() -> dict:
 
     return {
         "naive_charges": naive_count,
-        "effectkit_charges": fixed_count,
+        "did_it_land_charges": fixed_count,
         "reconcile_status": outcome.status,
         "unwind_status": comp.status,
         "lines": out}

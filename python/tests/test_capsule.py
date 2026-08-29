@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from effectkit.capsule import CapsuleError, capsule_from_dict
-from effectkit.registry import bundled
+from did_it_land.capsule import CapsuleError, capsule_from_dict
+from did_it_land.registry import bundled
 
 
 def good_doc() -> dict:

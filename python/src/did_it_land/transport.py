@@ -36,7 +36,7 @@ class HttpxTransport:
     """Default transport backed by httpx.
 
     Configured per provider with a base URL and any auth headers. httpx is imported
-    lazily so importing effectkit never requires it when a caller brings its own
+    lazily so importing did-it-land never requires it when a caller brings its own
     transport or only uses the offline paths.
     """
 
