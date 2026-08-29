@@ -189,7 +189,9 @@ def architecture() -> SVG:
 
     s.arrow(cx, 163, cx, 201)
     s.arrow(cx, 275, cx, 311)
-    s.arrow(cx, 389, cx, 460, label="on recovery and rollback", lx=cx + 18, ly=428)
+    s.arrow(cx, 389, cx, 460)
+    s.text(cx - 18, 428, "on recovery and rollback", size=15, fill="#57606a",
+           anchor="end")
     s.arrow(772, 352, 911, 352, dashed=True, color="#8a939c", marker="ag")
     # reconciliation reaches the systems of record through an orthogonal bus:
     # one trunk down, one distribution bar, one clean drop per system
@@ -206,9 +208,9 @@ def architecture() -> SVG:
     s.path_arrow([(390, 352), (66, 352), (66, 700), (142, 700)], color="#8a939c",
                  marker="ag")
     s.text(84, 676, "normal step calls", size=15, fill="#8a939c", anchor="start")
-    # the verdict returns to the orchestrator
-    s.path_arrow([(830, 465), (830, 392)], color="#555", dashed=True)
-    s.text(846, 432, "landed / not landed / unknown", size=15, fill="#57606a",
+    # the verdict returns up into the orchestrator itself
+    s.path_arrow([(730, 465), (730, 392)], color="#555", dashed=True)
+    s.text(746, 432, "landed / not landed / unknown", size=15, fill="#57606a",
            anchor="start")
 
     s.signature()
