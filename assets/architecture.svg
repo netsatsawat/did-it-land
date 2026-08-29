@@ -1,51 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="820" viewBox="0 0 1240 820">
-<defs><marker id="ab" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#444"/></marker><marker id="am" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#9a2b2b"/></marker><marker id="aw" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#555"/></marker></defs>
-<rect width="1240" height="820" fill="#ffffff"/>
-<text x="560" y="44" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#57606a" text-anchor="middle" font-weight="600" >Where side-effect reconciliation sits in an enterprise agent stack</text>
-<rect x="400.0" y="78.0" width="320" height="56" rx="10" fill="#dae8fc" stroke="#6c8ebf" stroke-width="1.6"/>
-<text x="560" y="101.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="600" >Business channels</text>
-<text x="560" y="121.33333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="middle" font-weight="normal" >users, apps, operations</text>
-<rect x="400.0" y="178.0" width="320" height="56" rx="10" fill="#e1d5e7" stroke="#9673a6" stroke-width="1.6"/>
-<text x="560" y="201.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="600" >Agent layer</text>
-<text x="560" y="221.33333333333334" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="middle" font-weight="normal" >plans work, chooses actions</text>
-<rect x="400.0" y="275.0" width="320" height="62" rx="10" fill="#fff2cc" stroke="#d6b656" stroke-width="1.6"/>
-<text x="560" y="301.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="600" >Durable orchestration</text>
-<text x="560" y="321.3333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="middle" font-weight="normal" >checkpoints, retries, recovery</text>
-<rect x="910.0" y="275.0" width="260" height="62" rx="10" fill="#e1d5e7" stroke="#9673a6" stroke-width="1.6"/>
-<text x="1040" y="301.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="600" >Observability &amp; audit</text>
-<text x="1040" y="321.3333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="middle" font-weight="normal" >traces, action records</text>
-<rect x="240.0" y="390.0" width="640" height="124" rx="10" fill="#d5e8d4" stroke="#82b366" stroke-width="1.6"/>
-<text x="560" y="457.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="normal" ></text>
-<text x="560" y="412" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" fill="#1f2328" text-anchor="middle" font-weight="600" >Side-effect reconciliation  (did-it-land)</text>
-<rect x="290.0" y="432.0" width="240" height="52" rx="10" fill="#ffffff" stroke="#82b366" stroke-width="1.6"/>
-<text x="410" y="453.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="600" >probe</text>
-<text x="410" y="473.3333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="middle" font-weight="normal" >did the call land?</text>
-<rect x="590.0" y="432.0" width="240" height="52" rx="10" fill="#ffffff" stroke="#82b366" stroke-width="1.6"/>
-<text x="710" y="453.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="600" >undo</text>
-<text x="710" y="473.3333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="middle" font-weight="normal" >run the compensation</text>
-<text x="560" y="502" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="middle" font-weight="normal" >one capsule per operation: data, not code</text>
-<rect x="95.0" y="623.0" width="210" height="54" rx="10" fill="#f8cecc" stroke="#b85450" stroke-width="1.6"/>
-<text x="200" y="655.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="normal" >Payment provider</text>
-<rect x="335.0" y="623.0" width="210" height="54" rx="10" fill="#f8cecc" stroke="#b85450" stroke-width="1.6"/>
-<text x="440" y="655.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="normal" >Object store</text>
-<rect x="575.0" y="623.0" width="210" height="54" rx="10" fill="#f8cecc" stroke="#b85450" stroke-width="1.6"/>
-<text x="680" y="655.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="middle" font-weight="normal" >Message service</text>
-<path d="M845.0,625.0 a75.0,12 0 0,1 150,0 v50 a75.0,12 0 0,1 -150,0 z" fill="#f8cecc" stroke="#b85450" stroke-width="1.6"/>
-<path d="M845.0,625.0 a75.0,12 0 0,0 150,0" fill="none" stroke="#b85450" stroke-width="1.6"/>
-<text x="920" y="651.1666666666666" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="normal" >Relational</text>
-<text x="920" y="670.1666666666666" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="normal" >database</text>
-<line x1="560" y1="134" x2="560" y2="172" stroke="#444" stroke-width="1.6" marker-end="url(#ab)"/>
-<line x1="560" y1="234" x2="560" y2="268" stroke="#444" stroke-width="1.6" marker-end="url(#ab)"/>
-<line x1="560" y1="337" x2="560" y2="388" stroke="#444" stroke-width="1.6" marker-end="url(#ab)"/>
-<text x="576" y="366" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="start" font-weight="normal" >on recovery and rollback</text>
-<line x1="722" y1="306" x2="908" y2="306" stroke="#999" stroke-width="1.6" marker-end="url(#ab)" stroke-dasharray="6,5"/>
-<path d="M400,306 L80,306 L80,650 L89,650" fill="none" stroke="#999" stroke-width="1.6" marker-end="url(#ab)"/>
-<text x="96" y="590" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#8a939c" text-anchor="start" font-weight="normal" >normal step calls</text>
-<line x1="434.0" y1="514" x2="200" y2="618" stroke="#444" stroke-width="1.6" marker-end="url(#ab)"/>
-<line x1="518.0" y1="514" x2="440" y2="618" stroke="#444" stroke-width="1.6" marker-end="url(#ab)"/>
-<line x1="602.0" y1="514" x2="680" y2="618" stroke="#444" stroke-width="1.6" marker-end="url(#ab)"/>
-<line x1="686.0" y1="514" x2="920" y2="618" stroke="#444" stroke-width="1.6" marker-end="url(#ab)"/>
-<path d="M760,414 L760,340" fill="none" stroke="#555" stroke-width="1.6" marker-end="url(#aw)" stroke-dasharray="6,5"/>
-<text x="774" y="380" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a" text-anchor="start" font-weight="normal" >landed / not landed / unknown</text>
-<text x="26" y="800" font-family="Menlo, Monaco, monospace" font-size="16" fill="#6e7781" text-anchor="start" font-weight="normal" >github.com/netsatsawat/did-it-land</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="940" viewBox="0 0 1280 940">
+<defs><marker id="ab" markerWidth="9" markerHeight="7" refX="7.5" refY="3.5" orient="auto"><path d="M0,0 L8.5,3.5 L0,7 z" fill="#444"/></marker><marker id="am" markerWidth="9" markerHeight="7" refX="7.5" refY="3.5" orient="auto"><path d="M0,0 L8.5,3.5 L0,7 z" fill="#9a2b2b"/></marker><marker id="ag" markerWidth="9" markerHeight="7" refX="7.5" refY="3.5" orient="auto"><path d="M0,0 L8.5,3.5 L0,7 z" fill="#8a939c"/></marker></defs>
+<rect width="1280" height="940" fill="#ffffff"/>
+<text x="580" y="52" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="23" fill="#57606a" text-anchor="middle" font-weight="600" >Where side-effect reconciliation sits in an enterprise agent stack</text>
+<rect x="390.0" y="93.0" width="380" height="70" rx="12" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2.4"/>
+<text x="580" y="122.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#1f2328" text-anchor="middle" font-weight="600" >Business channels</text>
+<text x="580" y="146.33333333333334" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="middle" font-weight="normal" >users, apps, operations</text>
+<rect x="390.0" y="205.0" width="380" height="70" rx="12" fill="#e1d5e7" stroke="#9673a6" stroke-width="2.4"/>
+<text x="580" y="234.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#1f2328" text-anchor="middle" font-weight="600" >Agent layer</text>
+<text x="580" y="258.3333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="middle" font-weight="normal" >plans work, chooses actions</text>
+<rect x="390.0" y="315.0" width="380" height="74" rx="12" fill="#fff2cc" stroke="#d6b656" stroke-width="2.4"/>
+<text x="580" y="346.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#1f2328" text-anchor="middle" font-weight="600" >Durable orchestration</text>
+<text x="580" y="370.3333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="middle" font-weight="normal" >checkpoints, retries, recovery</text>
+<rect x="915.0" y="315.0" width="330" height="74" rx="12" fill="#e1d5e7" stroke="#9673a6" stroke-width="2.4"/>
+<text x="1080" y="346.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#1f2328" text-anchor="middle" font-weight="600" >Observability &amp; audit</text>
+<text x="1080" y="370.3333333333333" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="middle" font-weight="normal" >traces, action records</text>
+<rect x="230.0" y="465.0" width="700" height="150" rx="12" fill="#d5e8d4" stroke="#82b366" stroke-width="2.4"/>
+<text x="580" y="490" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" fill="#1f2328" text-anchor="middle" font-weight="600" >Side-effect reconciliation  (did-it-land)</text>
+<rect x="275.0" y="509.0" width="280" height="66" rx="12" fill="#ffffff" stroke="#82b366" stroke-width="2.4"/>
+<text x="415" y="536.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#1f2328" text-anchor="middle" font-weight="600" >probe</text>
+<text x="415" y="560.3333333333334" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="middle" font-weight="normal" >did the call land?</text>
+<rect x="605.0" y="509.0" width="280" height="66" rx="12" fill="#ffffff" stroke="#82b366" stroke-width="2.4"/>
+<text x="745" y="536.0" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" fill="#1f2328" text-anchor="middle" font-weight="600" >undo</text>
+<text x="745" y="560.3333333333334" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="middle" font-weight="normal" >run the compensation</text>
+<text x="580" y="598" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#57606a" text-anchor="middle" font-weight="normal" >one capsule per operation: data, not code</text>
+<rect x="85.0" y="757.0" width="250" height="66" rx="12" fill="#f8cecc" stroke="#b85450" stroke-width="2.4"/>
+<text x="210" y="795.6666666666666" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" fill="#1f2328" text-anchor="middle" font-weight="normal" >Payment provider</text>
+<rect x="365.0" y="757.0" width="250" height="66" rx="12" fill="#f8cecc" stroke="#b85450" stroke-width="2.4"/>
+<text x="490" y="795.6666666666666" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" fill="#1f2328" text-anchor="middle" font-weight="normal" >Object store</text>
+<rect x="645.0" y="757.0" width="250" height="66" rx="12" fill="#f8cecc" stroke="#b85450" stroke-width="2.4"/>
+<text x="770" y="795.6666666666666" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" fill="#1f2328" text-anchor="middle" font-weight="normal" >Message service</text>
+<path d="M950.0,758.0 a90.0,14 0 0,1 180,0 v64 a90.0,14 0 0,1 -180,0 z" fill="#f8cecc" stroke="#b85450" stroke-width="2.4"/>
+<path d="M950.0,758.0 a90.0,14 0 0,0 180,0" fill="none" stroke="#b85450" stroke-width="2.4"/>
+<text x="1040" y="792.8333333333334" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#1f2328" text-anchor="middle" font-weight="normal" >Relational</text>
+<text x="1040" y="813.8333333333334" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#1f2328" text-anchor="middle" font-weight="normal" >database</text>
+<line x1="580" y1="163" x2="580" y2="201" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
+<line x1="580" y1="275" x2="580" y2="311" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
+<line x1="580" y1="389" x2="580" y2="461" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
+<text x="598" y="428" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#57606a" text-anchor="start" font-weight="normal" >on recovery and rollback</text>
+<line x1="772" y1="352" x2="911" y2="352" stroke="#8a939c" stroke-width="2.4" marker-end="url(#ag)" stroke-dasharray="7,6"/>
+<path d="M390,352 L80,352 Q66,352 66,366 L66,776 Q66,790 80,790 L81,790" fill="none" stroke="#8a939c" stroke-width="2.4" marker-end="url(#ag)"/>
+<text x="84" y="726" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#8a939c" text-anchor="start" font-weight="normal" >normal step calls</text>
+<line x1="461.6" y1="616" x2="210" y2="752" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
+<line x1="551.2" y1="616" x2="490" y2="752" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
+<line x1="640.8" y1="616" x2="770" y2="752" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
+<line x1="727.2" y1="616" x2="1040" y2="752" stroke="#444" stroke-width="2.4" marker-end="url(#ab)"/>
+<path d="M830,462 L830,394" fill="none" stroke="#555" stroke-width="2.4" marker-end="url(#ab)" stroke-dasharray="7,6"/>
+<text x="846" y="432" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#57606a" text-anchor="start" font-weight="normal" >landed / not landed / unknown</text>
+<text x="28" y="916" font-family="Menlo, Monaco, monospace" font-size="18" fill="#6e7781" text-anchor="start" font-weight="normal" >github.com/netsatsawat/did-it-land</text>
 </svg>
