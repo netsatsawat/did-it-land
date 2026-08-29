@@ -45,6 +45,43 @@ probe:
     - when:
         status_in: [429, 500, 502, 503]
       result: unknown
+  confirm:
+    request:
+      method: GET
+      path: /v1/payment_intents
+      query:
+        limit: "100"
+    interpret:
+      - when:
+          status_in: [200]
+          json_path: data
+          where:
+            metadata.order_id: "{order_id}"
+            status: succeeded
+          count_gte: 1
+        result: landed
+      - when:
+          status_in: [200]
+          json_path: data
+          where:
+            metadata.order_id: "{order_id}"
+            status: processing
+          count_gte: 1
+        result: unknown
+      - when:
+          status_in: [200]
+        result: not_landed
+      - when:
+          status_in: [429, 500, 502, 503]
+        result: unknown
+    notes: >
+      Search can lag a just-created charge, so an empty search answer is never
+      trusted on its own. This second question walks the List API, which Stripe
+      does not subject to search indexing lag, filtering the most recent hundred
+      intents client-side by the caller's order id. Only after the List also comes
+      back empty does the capsule answer not_landed. A burst of more than a
+      hundred intents between the crash and the recovery could still hide the
+      charge from this page, which is why the request keeps limit at the maximum.
 
 reversibility:
   class: reversible
@@ -80,6 +117,7 @@ notes: >
   returned objects.
 source:
   - https://docs.stripe.com/api/payment_intents/search
+  - https://docs.stripe.com/api/payment_intents/list
   - https://docs.stripe.com/api/idempotent_requests
   - https://docs.stripe.com/metadata
   - https://docs.stripe.com/search

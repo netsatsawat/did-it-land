@@ -38,6 +38,9 @@ class FakeStripe:
             return self._create(request)
         if method == "GET" and path == "/v1/payment_intents/search":
             return self._search(request)
+        if method == "GET" and path == "/v1/payment_intents":
+            all_intents = [pi for charges in self._by_order.values() for pi in charges]
+            return Response(200, {"data": all_intents})
         if method == "POST" and path == "/v1/refunds":
             return self._refund(request)
         return Response(404, {"error": f"no fake route for {method} {path}"})

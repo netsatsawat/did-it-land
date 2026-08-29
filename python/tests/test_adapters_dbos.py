@@ -76,6 +76,19 @@ class TestGuard(unittest.TestCase):
 
 
 class TestSaga(unittest.TestCase):
+    def test_recording_the_wrong_context_key_fails_loudly(self):
+        # The compensation template binds {payment_intent_id}. Recording only the
+        # order id, the mistake our own example once shipped, must raise at
+        # compensate time, never silently skip the refund.
+        from did_it_land.reconcile import EffectError
+
+        capsule = bundled().get("stripe.charge")
+        saga = Saga()
+        saga.record(capsule, {"order_id": "ORD-1"}, OneRoute(Response(200, {})))
+        with self.assertRaises(EffectError) as raised:
+            saga.compensate()
+        self.assertIn("payment_intent_id", str(raised.exception))
+
     def test_compensate_walks_in_reverse(self):
         capsule = bundled().get("stripe.charge")
         transport = OneRoute(Response(200, {"id": "re_x"}))

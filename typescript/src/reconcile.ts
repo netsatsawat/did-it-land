@@ -88,30 +88,59 @@ function navigate(body: unknown, path: string): [boolean, unknown] {
   return [true, cur];
 }
 
-function filtered(value: unknown, where?: Record<string, unknown>): unknown {
+function fieldOf(item: unknown, dotted: string): unknown {
+  let cur: unknown = item;
+  for (const part of dotted.split(".")) {
+    if (cur === null || typeof cur !== "object" || !(part in (cur as object))) return undefined;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return cur;
+}
+
+function filtered(
+  value: unknown,
+  where: Record<string, unknown> | undefined,
+  context: Record<string, unknown>,
+  capsuleId: string,
+): unknown {
   if (!where || !Array.isArray(value)) return value;
+  const bound = Object.fromEntries(
+    Object.entries(where).map(([k, v]) => [
+      k,
+      typeof v === "string" ? bind(v, context, capsuleId) : v,
+    ]),
+  );
   return value.filter(
     (item) =>
       item !== null &&
       typeof item === "object" &&
-      Object.entries(where).every(([k, v]) => (item as Record<string, unknown>)[k] === v),
+      Object.entries(bound).every(([k, v]) => fieldOf(item, k) === v),
   );
 }
 
-function match(rule: Rule, resp: Response): [boolean, Record<string, unknown>] {
+function match(
+  rule: Rule,
+  resp: Response,
+  context: Record<string, unknown>,
+  capsuleId: string,
+): [boolean, Record<string, unknown>] {
   const evidence: Record<string, unknown> = {};
   if (rule.statusIn !== undefined && !rule.statusIn.includes(resp.statusCode)) {
     return [false, evidence];
   }
   if (rule.jsonPath !== undefined) {
     const [found, raw] = navigate(resp.body, rule.jsonPath);
-    const value = filtered(raw, rule.where);
+    const value = filtered(raw, rule.where, context, capsuleId);
     if (rule.exists !== undefined && found !== rule.exists) return [false, evidence];
     if (rule.countGte !== undefined) {
       if (!found || !Array.isArray(value) || value.length < rule.countGte) {
         return [false, evidence];
       }
       evidence.matched = value.length;
+      const ids = value
+        .filter((x) => x !== null && typeof x === "object" && "id" in (x as object))
+        .map((x) => (x as Record<string, unknown>).id);
+      if (ids.length) evidence.ids = ids;
     }
     if (rule.hasEquals && (!found || value !== rule.equals)) return [false, evidence];
   }
@@ -128,17 +157,37 @@ export async function reconcile(
     return getHandler(probe.handler).probe(capsule, context);
   }
   if (!transport) throw new EffectError(`${capsule.id}: an http probe needs a transport`);
+  const outcome = await httpProbe(capsule, probe.request!, probe.interpret, context, transport);
+  if (outcome.status === "not_landed" && probe.confirm) {
+    const confirmed = await httpProbe(
+      capsule, probe.confirm.request, probe.confirm.interpret, context, transport);
+    return {
+      status: confirmed.status,
+      capsuleId: capsule.id,
+      evidence: { ...confirmed.evidence, confirmed: true },
+    };
+  }
+  return outcome;
+}
+
+async function httpProbe(
+  capsule: Capsule,
+  request: HttpRequest,
+  interpret: Rule[],
+  context: Record<string, unknown>,
+  transport: Transport,
+): Promise<Outcome> {
   let resp: Response;
   try {
-    resp = await transport.send(bindRequest(probe.request!, context, capsule.id));
+    resp = await transport.send(bindRequest(request, context, capsule.id));
   } catch (err) {
     if (err instanceof TransportError) {
       return { status: "unknown", capsuleId: capsule.id, evidence: { transport_error: String(err) } };
     }
     throw err;
   }
-  for (const rule of probe.interpret) {
-    const [ok, evidence] = match(rule, resp);
+  for (const rule of interpret) {
+    const [ok, evidence] = match(rule, resp, context, capsule.id);
     if (ok) {
       evidence.status_code = resp.statusCode;
       return { status: rule.result, capsuleId: capsule.id, evidence };

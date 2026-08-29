@@ -21,19 +21,31 @@ FRESH = ROOT / "reports" / "freshness.json"
 
 
 def stripe_live() -> bool | None:
-    """A well-formed search returns 200 even with zero results. A changed endpoint or
-    response shape is exactly the drift we want to catch."""
+    """Run the real reconcile path against Stripe test mode with an order id that
+    cannot exist. The capsule must walk BOTH questions, the search and the lag-free
+    List confirm, and conclude not_landed. That checks the interpret semantics and
+    both endpoints' shapes, not merely that one URL returns a 200."""
     key = os.environ.get("STRIPE_TEST_KEY")
     if not key:
         return None
-    import httpx
+    import sys
 
-    resp = httpx.get(
-        "https://api.stripe.com/v1/payment_intents/search",
-        params={"query": 'metadata["order_id"]:"did-it-land-drift-probe"'},
-        headers={"Authorization": f"Bearer {key}"},
-        timeout=15.0)
-    return resp.status_code == 200 and isinstance(resp.json().get("data"), list)
+    sys.path.insert(0, str(ROOT / "python" / "src"))
+    from did_it_land import HttpxTransport, bundled, reconcile
+
+    capsule = bundled().get("stripe.charge")
+    transport = HttpxTransport(
+        "https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
+    outcome = reconcile(
+        capsule, {"order_id": "did-it-land-drift-probe-never-created"},
+        transport=transport)
+    if outcome.status != "not_landed":
+        print(f"  expected not_landed, got {outcome.status} ({outcome.evidence})")
+        return False
+    if not outcome.evidence.get("confirmed"):
+        print("  the List confirm pass did not run; probe semantics drifted")
+        return False
+    return True
 
 
 # Capsules gain a live check here as their sandbox harness is written. Roadmap capsules

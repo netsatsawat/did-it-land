@@ -79,31 +79,50 @@ def _navigate(body: object, path: str) -> tuple[bool, object]:
     return True, cur
 
 
-def _filtered(value: object, where: dict | None) -> object:
-    """Apply a rule's where clause: keep array elements whose fields equal the given values."""
+def _field(item: object, dotted: str) -> object:
+    """Fetch a possibly dotted field from a mapping, metadata.order_id style."""
+    cur = item
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
+def _filtered(value: object, where: dict | None, context: dict, capsule_id: str) -> object:
+    """Apply a rule's where clause: keep array elements whose fields equal the given
+    values. Keys may be dotted paths; string values may carry {name} placeholders
+    bound from the call context, so a capsule can filter on the caller's own id."""
     if where is None or not isinstance(value, list):
         return value
+    bound = {
+        k: _bind(v, context, capsule_id) if isinstance(v, str) else v
+        for k, v in where.items()}
     kept = []
     for item in value:
-        if isinstance(item, dict) and all(item.get(k) == v for k, v in where.items()):
+        if isinstance(item, dict) and all(
+                _field(item, k) == v for k, v in bound.items()):
             kept.append(item)
     return kept
 
 
-def _match(rule, resp: Response) -> tuple[bool, dict]:
+def _match(rule, resp: Response, context: dict, capsule_id: str) -> tuple[bool, dict]:
     """Decide whether a rule matches, returning any evidence worth surfacing."""
     evidence: dict = {}
     if rule.status_in is not None and resp.status_code not in rule.status_in:
         return False, evidence
     if rule.json_path is not None:
         found, value = _navigate(resp.body, rule.json_path)
-        value = _filtered(value, rule.where)
+        value = _filtered(value, rule.where, context, capsule_id)
         if rule.exists is not None and found != rule.exists:
             return False, evidence
         if rule.count_gte is not None:
             if not found or not isinstance(value, list) or len(value) < rule.count_gte:
                 return False, evidence
             evidence["matched"] = len(value)
+            ids = [x["id"] for x in value if isinstance(x, dict) and "id" in x]
+            if ids:
+                evidence["ids"] = ids
         if rule.equals is not UNSET and (not found or value != rule.equals):
             return False, evidence
     return True, evidence
@@ -121,12 +140,28 @@ def reconcile(
         return native.get_handler(probe.handler).probe(capsule, context)
     if transport is None:
         raise EffectError(f"{capsule.id}: an http probe needs a transport")
+    outcome = _http_probe(
+        capsule, probe.request, probe.interpret, context, transport)
+    if outcome.not_landed and probe.confirm is not None:
+        # The primary probe can lag the truth (search indexing, for one). Before
+        # anyone acts on "it never happened", ask the lag-free second question and
+        # let its verdict win.
+        confirmed = _http_probe(
+            capsule, probe.confirm.request, probe.confirm.interpret, context,
+            transport)
+        evidence = dict(confirmed.evidence)
+        evidence["confirmed"] = True
+        return Outcome(confirmed.status, capsule.id, evidence)
+    return outcome
+
+
+def _http_probe(capsule, request, interpret, context, transport) -> Outcome:
     try:
-        resp = transport.send(_bind_request(probe.request, context, capsule.id))
+        resp = transport.send(_bind_request(request, context, capsule.id))
     except TransportError as exc:
         return Outcome("unknown", capsule.id, {"transport_error": str(exc)})
-    for rule in probe.interpret:
-        matched, evidence = _match(rule, resp)
+    for rule in interpret:
+        matched, evidence = _match(rule, resp, context, capsule.id)
         if matched:
             evidence["status_code"] = resp.status_code
             return Outcome(rule.result, capsule.id, evidence)

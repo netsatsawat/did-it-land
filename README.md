@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-  <a href="#-the-problem-in-plain-words">The problem</a> · <a href="#-watch-it-happen-on-your-own-machine">Watch it happen</a> · <a href="#-the-fix-is-a-small-file">The fix</a> · <a href="#-how-one-check-runs">How it runs</a> · <a href="#-where-it-fits-in-a-company-system">Where it fits</a> · <a href="https://satsawat.ai/#newsletter">Newsletter</a>
+  <a href="#-the-problem-in-plain-words">The problem</a> · <a href="#-watch-it-happen-on-your-own-machine">Watch it happen</a> · <a href="#-the-fix-is-a-small-file">The fix</a> · <a href="#-how-one-check-runs">How it runs</a> · <a href="#-where-it-fits-in-a-company-system">Where it fits</a> · <a href="https://github.com/netsatsawat/did-it-land/blob/main/docs/QUICKSTART.md">Quick start</a> · <a href="https://satsawat.ai/#newsletter">Newsletter</a>
 </p>
 
 <p align="center">
@@ -213,7 +213,9 @@ def charge_customer(order_id: str) -> object:
 ```
 
 `Saga` keeps a list of everything a job has done so far, so a failed job can undo its
-completed work in reverse order. The full example is
+completed work in reverse order. The list lives in process memory: it survives a
+failure inside the job, and a replaying engine rebuilds it, but it does not survive a
+bare process crash on its own. The full example is
 [python/examples/dbos_charge.py](https://github.com/netsatsawat/did-it-land/blob/main/python/examples/dbos_charge.py).
 
 ## 🧪 How it stays honest
@@ -226,8 +228,10 @@ needed, and proves the code and the shape of every capsule. The weekly tier
 asks the real services, in their test environments, whether they still behave the way
 each capsule says, and writes the date of the last successful check into
 [reports/freshness.json](https://github.com/netsatsawat/did-it-land/blob/main/reports/freshness.json).
-And the build recomputes every number in this page from the project's own
-files, failing when one drifts.
+And the build recomputes every number in this page from the project's own files,
+failing when one drifts. One honest note while this is new: the weekly job ships with
+this repo but has not accumulated history yet, and the freshness file says so plainly
+with a null date until each capsule's first green run.
 
 ## 🚫 What this deliberately is not
 

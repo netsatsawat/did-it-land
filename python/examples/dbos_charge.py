@@ -20,8 +20,7 @@ from __future__ import annotations
 import os
 import sys
 
-from did_it_land import HttpxTransport, bundled
-from did_it_land.adapters.dbos import Saga, guard
+from did_it_land import HttpxTransport, Saga, Skipped, bundled, guard
 
 
 def _stripe() -> HttpxTransport:
@@ -53,8 +52,14 @@ def main() -> int:
             raise NotImplementedError("wire up your Stripe create call")
 
         result = guard(charge, {"order_id": order_id}, stripe, do_charge)
-        saga.record(charge, {"order_id": order_id}, stripe)
-        return str(result)
+        # The undo template needs the payment intent id, so record THAT, never the
+        # order id. A landed probe already carries the id in its evidence.
+        if isinstance(result, Skipped):
+            pi_id = result.outcome.evidence["ids"][0]
+        else:
+            pi_id = str(result)
+        saga.record(charge, {"payment_intent_id": pi_id}, stripe)
+        return pi_id
 
     @DBOS.workflow()
     def fulfil(order_id: str) -> str:

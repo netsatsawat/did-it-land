@@ -29,11 +29,17 @@ export interface Rule {
   where?: Record<string, unknown>;
 }
 
+export interface Confirm {
+  request: HttpRequest;
+  interpret: Rule[];
+}
+
 export interface Probe {
   kind: ProbeKind;
   handler?: string;
   request?: HttpRequest;
   interpret: Rule[];
+  confirm?: Confirm;
 }
 
 export interface Idempotency {
@@ -155,7 +161,17 @@ function probeFrom(value: unknown): Probe {
     throw new CapsuleError(`${where}.interpret: an http probe needs at least one rule`);
   }
   const interpret = raw.map((r, i) => ruleFrom(r, `${where}.interpret[${i}]`));
-  return { kind, request, interpret };
+  let confirm: Confirm | undefined;
+  if (doc.confirm !== undefined && doc.confirm !== null) {
+    const cdoc = rec(doc.confirm, `${where}.confirm`);
+    const creq = requestFrom(require_(cdoc, "request", `${where}.confirm`), `${where}.confirm.request`);
+    const craw = require_(cdoc, "interpret", `${where}.confirm`) as unknown[];
+    if (!Array.isArray(craw) || craw.length === 0) {
+      throw new CapsuleError(`${where}.confirm.interpret: needs at least one rule`);
+    }
+    confirm = { request: creq, interpret: craw.map((r, i) => ruleFrom(r, `${where}.confirm.interpret[${i}]`)) };
+  }
+  return { kind, request, interpret, confirm };
 }
 
 function compensationFrom(value: unknown): Compensation | undefined {
