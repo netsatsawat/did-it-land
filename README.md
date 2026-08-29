@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-  <a href="#-the-problem">The problem</a> · <a href="#-see-it-fail-then-see-the-fix">See it fail</a> · <a href="#-what-a-capsule-is">Capsules</a> · <a href="#-using-it-with-dbos">DBOS</a> · <a href="https://satsawat.ai/#newsletter">Newsletter</a>
+  <a href="#-the-problem-in-plain-words">The problem</a> · <a href="#-watch-it-happen-on-your-own-machine">Watch it happen</a> · <a href="#-the-fix-is-a-small-file">The fix</a> · <a href="#-how-one-check-runs">How it runs</a> · <a href="#-where-it-fits-in-a-company-system">Where it fits</a> · <a href="https://satsawat.ai/#newsletter">Newsletter</a>
 </p>
 
 <p align="center">
@@ -20,33 +20,42 @@
   <a href="https://satsawat.ai"><img src="https://img.shields.io/badge/author-satsawat.ai-e8a112?style=for-the-badge" alt="Author: satsawat.ai"></a>
 </p>
 
-> Your worker charged a customer, then died before it could write that down. The engine
-> re-runs the step. The customer pays twice. did-it-land is the per-vendor knowledge that
-> stops this: did the call land, and how do you reverse it, shipped as data.
+> Your program charged a customer, then died before it could write that down. When it
+> restarts, it charges them again. did-it-land answers the two questions that prevent
+> this: did the first charge go through, and if you need to give the money back, how?
 
-## 💸 The problem
+## 💸 The problem, in plain words
 
-Durable workflow engines (DBOS, Temporal, LangGraph durable, Inngest) checkpoint your
-workflow and resume it after a crash. Inside their own state, the guarantee is real. But
-a step that calls Stripe does two things: it makes the call, and it records that the
-call happened. Those are separate writes to separate systems. When the process dies
-between them, the vendor has the money and your engine has nothing. On recovery, the
-engine re-runs the step, because as far as it can tell the step never ran.
+Many systems run work as a series of steps. Charge the card, update the order, send the
+email. The software that runs these steps saves its progress after each one, so if the
+machine dies halfway, it can restart and carry on from the last saved point.
 
-Every engine's documentation answers this with "make your steps idempotent" and moves
-on. That is the homework this repo does for you. Answering "did the call land" takes
-vendor-specific knowledge: which endpoint to ask, which field to trust, which statuses
-mean money moved, and when the honest answer is "wait and ask again". Reversing the call
-takes more of the same. No engine ships that knowledge, because it lives in each
-vendor's docs and in the memories of people who already paid for the lesson.
+Here is the catch. "Charge the card" is really two actions: make the request to the
+payment company, and save a note saying the request was made. The machine can die
+between those two actions. When that happens, the payment company has the money and
+your system has no note. On restart, your system looks at its notes, sees no charge,
+and charges again. Nobody wrote a bug. The customer still pays twice.
+
+The picture below walks through what should happen instead:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/workflow.png" alt="Workflow chart of crash recovery: a step calls an external service, the process crashes before the checkpoint, recovery probes with the operation's capsule, and a decision follows. Landed skips the retry, not landed runs the step with the same idempotency key, unknown waits and probes again. Both resolved paths meet at a checkpoint with exactly one effect, and an optional rollback runs the compensation." width="72%">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/workflow.png" alt="Workflow chart: a step calls an outside service, the process crashes before its progress is saved, and recovery asks the service whether the work happened. Yes means skip the retry and reuse the result. No means run the step again with the same key. Unknown means wait and ask again. Both settled paths meet at a saved note recording exactly one effect, and an optional rollback runs the undo step." width="88%">
 </p>
 
-## ⚡ See it fail, then see the fix
+Read it top to bottom. A step calls an outside service, and the process dies before
+its progress is saved. On restart, nothing reruns blindly. It first asks the service a
+direct question: did my earlier request go through? Three answers are possible, and
+each gets its own path. **Yes** means the work already
+happened, so skip the rerun and use what exists. **No** means it is safe to run the
+step now. **Unknown**, for example when the service is briefly down, means wait and ask
+again, because acting on a guess is how money gets moved twice. Once the answer is
+settled, the system saves its note, and the outside world holds exactly one charge. If
+the whole job later needs to be cancelled, the last box runs the undo.
 
-No keys, no network, one screen:
+## ⚡ Watch it happen on your own machine
+
+No accounts, no keys, nothing to sign up for. The demo fakes the payment company
+inside your own terminal:
 
 ```
 pip install did-it-land
@@ -54,39 +63,44 @@ did-it-land demo
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/demo.gif" alt="Terminal replay of the demo: naive recovery double-charges the customer, recovery with did-it-land reconciles to a single charge, then unwind issues the refund." width="80%">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/demo.gif" alt="Terminal recording of the demo: the naive restart charges the customer twice, the did-it-land restart checks first and keeps it to one charge, then the undo issues the refund." width="80%">
 </p>
 
-The demo stages the crash twice against an in-process fake Stripe. Naive recovery mints
-a fresh idempotency key and charges again. The did-it-land path asks first, hears
-"landed", and skips the retry. Then it reverses the charge with one call.
+It stages the same crash twice. The first run restarts blindly and ends with two
+charges for one order. The second run asks first, hears that the charge went through,
+and ends with one. Then it refunds it, one call.
 
-## 💊 What a capsule is
+## 💊 The fix is a small file
 
-One YAML file per external operation, carrying the answers to both questions:
+For every kind of action, someone has to know two things. How do you ask the service
+whether the action happened, and how do you undo it. That knowledge is different for
+every service, it hides in scattered documentation pages, and most teams learn it the
+expensive way, after the double charge.
+
+did-it-land collects that knowledge into small files called **capsules**. One file per
+action. Here is the one for charging a card with Stripe, shortened:
 
 ```yaml
 id: stripe.charge
-probe:                  # did it land?
+probe:                  # how to ask: did the charge go through?
   request: GET /v1/payment_intents/search?query=metadata["order_id"]:"{order_id}"
   interpret:
-    - status succeeded present    -> landed
-    - status processing present   -> unknown, money is in flight
-    - otherwise on 200            -> not_landed
-compensation:           # how do I reverse it?
+    - a payment marked succeeded exists   -> it went through
+    - a payment marked processing exists  -> money is moving, wait
+    - nothing found                       -> it did not go through
+compensation:           # how to undo it: send a refund
   request: POST /v1/refunds
-  headers: {Idempotency-Key: did-it-land-refund-{payment_intent_id}}
-reversibility: reversible, but Stripe keeps the fees
+reversibility: refundable, though Stripe keeps its processing fees
 source: five links to Stripe's own documentation
 ```
 
-That excerpt is abridged. The real capsule is
+The full file is
 [capsules/stripe.charge.yaml](https://github.com/netsatsawat/did-it-land/blob/main/capsules/stripe.charge.yaml),
-and every claim in it cites the vendor's documentation. The corpus is the product. Both
-runtimes stay thin on purpose and read the same files, so Python and TypeScript can
-never disagree about what a probe means.
+and every claim in it links to the page in Stripe's documentation that backs it up.
+Those files are the real product. The code around them is small on purpose, and the same
+files drive both the Python and the TypeScript versions, so the two can never disagree.
 
-In code, the whole surface is two calls:
+In your own code, the whole thing is two calls. One asks, one undoes:
 
 ```python
 from did_it_land import bundled, reconcile, unwind, HttpxTransport
@@ -96,46 +110,68 @@ charge = bundled().get("stripe.charge")
 
 outcome = reconcile(charge, {"order_id": "ORD-1"}, transport=stripe)
 if outcome.landed:
-    ...        # the charge already happened, do not retry
+    ...        # the charge already happened, do not run it again
 
 unwind(charge, {"payment_intent_id": "pi_123"}, transport=stripe)
 ```
 
-Under the hood, one reconcile call is this exchange:
+## 🔍 How one check runs
+
+This picture shows a single check, left to right, in the order the calls happen:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/sequence.png" alt="UML sequence diagram: the durable workflow engine calls reconcile on the guard, the guard looks the operation up in the effect corpus and receives its capsule, probes the external API and receives the current state, then returns landed, not landed, or unknown to the engine." width="80%">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/sequence.png" alt="Sequence diagram, read left to right: the workflow engine asks the guard to check an order. The guard fetches the right capsule from the collection, asks the outside service for the current state, and reports back one of three answers: it went through, it did not, or unknown." width="86%">
 </p>
 
-## 🏛️ Where it sits in an enterprise stack
+Each vertical line is one of four players. The **engine** on the left is the
+software running your steps. When it restarts after a crash, it asks the **guard** to
+check on an order. The guard pulls the right **capsule** from the collection, so it
+knows exactly how to ask about this kind of action. Then it puts the question to the
+**service**, the payment company in our example, and reads the current state from the
+reply. Solid arrows are questions going out. Dashed arrows are answers coming back.
+The final dashed arrow carries one of three words back to the engine: it went through,
+it did not, or we cannot tell yet. The engine acts only on a definite answer.
 
-Between the orchestration layer and the systems of record. The durable engine keeps
-calling services directly on the happy path. On recovery and rollback it consults the
-reconciliation layer, which probes or compensates per capsule and hands back a verdict.
+## 🏛️ Where it fits in a company system
+
+Zooming out, this is the whole landscape and the one spot did-it-land occupies:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/architecture.png" alt="Enterprise architecture diagram in neutral terms: business channels feed an agent layer, which feeds durable orchestration. On recovery and rollback the orchestrator consults the side-effect reconciliation layer, whose probe and undo halves talk to the systems of record: a payment provider, an object store, a message service, and a relational database. The verdict, landed, not landed, or unknown, returns to the orchestrator, with observability and audit alongside." width="90%">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/architecture.png" alt="Architecture diagram: business channels feed an agent layer, which feeds the orchestration layer that runs steps and saves progress. On recovery and rollback the orchestrator consults the side-effect reconciliation layer, whose two halves ask whether a call went through and run the undo. A shared set of lines connects down to the payment provider, object store, message service, and relational database. A dashed arrow carries the answer back up, and an observability box sits alongside." width="94%">
 </p>
 
-## 🧩 The four capsules
+Top to bottom: people and apps create work, an agent or application decides what to do,
+and the orchestration layer runs the steps and saves progress as it goes. On the
+ordinary day, that layer talks straight to the systems at the bottom, along the gray
+line on the left. The green band is this library, and it is consulted at exactly two
+moments: after a crash, to ask "did my call go through?", and during a cancellation,
+to run the undo. Its answer travels back up the dashed line as one of the three words.
+Note what the green band is not. It is not a platform to install or a service to run.
+It is a set of files and two functions, sitting between the layer that runs your steps
+and the outside services those steps touch.
 
-| capsule | did it land? | how do I reverse it? |
+## 🧩 What ships today
+
+Four capsules, each for an action where a definite answer exists:
+
+| capsule | how it asks | how it undoes |
 |---|---|---|
-| `stripe.charge` | search by your order id in metadata, read status client-side | refund, with its own idempotency key |
-| `s3.delete_object` | HEAD the object | restore the version, only if versioning was on |
-| `github.merge_pr` | trust the `merged` field, never the branch | you cannot, a revert is a forward commit |
-| `postgres.insert` | select by the natural key | delete by the same key |
+| `stripe.charge` | search by your own order id | refund, protected against double refunds |
+| `s3.delete_object` | ask whether the file still exists | restore, only if versioning was on |
+| `github.merge_pr` | read the merged flag, never the branch | no undo exists, a revert is new work |
+| `postgres.insert` | look the row up by its business key | delete the same row |
 
-Four is deliberate. I chose each operation because its probe returns a definite answer
-in the window that matters, and an operation that can only say "unknown" when you need
-it does not belong here. The format is specified in
+Four is deliberate. An action only earns a capsule when the question "did it happen"
+has a reliable answer in the moment you need it. Some services cannot answer in time,
+and the honest move is to leave them out rather than ship an answer that arrives too
+late. The file format is documented in
 [docs/CAPSULE-SCHEMA.md](https://github.com/netsatsawat/did-it-land/blob/main/docs/CAPSULE-SCHEMA.md).
 
 ## 🔌 Using it with DBOS
 
-DBOS resumes from the last completed step, so a step that crashed after calling the
-vendor re-runs on recovery. Wrap the side effect in `guard`, which probes first, acts
-only on a definite "not landed", and refuses to guess on "unknown":
+DBOS is one of the engines that restarts crashed work from the last saved step. Wrap a
+step in `guard` and the rerun asks before it acts. It skips work that already
+happened, runs work that did not, and refuses to guess when the answer is unknown:
 
 ```python
 from did_it_land import bundled
@@ -148,34 +184,35 @@ def charge_customer(order_id: str) -> object:
     return guard(charge, {"order_id": order_id}, stripe, lambda: create_charge(order_id))
 ```
 
-`Saga` records each completed effect so a failed workflow can walk them back with
-`unwind` in reverse order. The full wiring is in
+`Saga` keeps a list of everything a job has done so far, so a failed job can undo its
+completed work in reverse order. The full example is
 [python/examples/dbos_charge.py](https://github.com/netsatsawat/did-it-land/blob/main/python/examples/dbos_charge.py).
 
 ## 🧪 How it stays honest
 
-A frozen test fixture stays green forever, even after the vendor changes its API, and a
-green light on stale knowledge is worse than no light. So testing runs in two tiers.
-The offline tier runs on every push against local fakes, with no keys, proving the
-runtimes and the shape of every capsule. The scheduled tier
+Knowledge like this rots. A service changes its behavior, and a test built on old
+recordings keeps passing anyway, which is worse than no test. So the tests run in two
+tiers. The fast tier runs on every change against local stand-ins, with no accounts
+needed, and proves the code and the shape of every capsule. The weekly tier
 ([drift.yml](https://github.com/netsatsawat/did-it-land/blob/main/.github/workflows/drift.yml))
-hits real vendor sandboxes weekly and stamps
-[reports/freshness.json](https://github.com/netsatsawat/did-it-land/blob/main/reports/freshness.json)
-with the date each capsule was last confirmed against the live API. CI also recomputes
-every number this README states from the committed artifacts, and fails when one drifts.
+asks the real services, in their test environments, whether they still behave the way
+each capsule says, and writes the date of the last successful check into
+[reports/freshness.json](https://github.com/netsatsawat/did-it-land/blob/main/reports/freshness.json).
+And the build recomputes every number in this page from the project's own
+files, failing when one drifts.
 
 ## 🚫 What this deliberately is not
 
-Not an observability platform, not an eval, not a benchmark, and not another durable
-engine. It is the per-vendor probe-and-undo data those engines leave as an exercise for
-the reader, collected in one place and kept current.
+Not a monitoring platform, not a benchmark, and not another engine for running steps.
+It is the ask-and-undo knowledge those engines leave out, written down in one place
+and kept current.
 
 ## 🗺️ Roadmap
 
-More capsules, each added only with a live-sandbox drift test attached. A TypeScript
-engine adapter. The outbound argument side of a capsule. The corpus stays at a dozen or
-so stable operations on purpose, because breadth that must stay current is what turns a
-corpus into folklore.
+More capsules, each added only together with its weekly real-service check. A
+TypeScript engine adapter. The collection stays small on purpose, around a dozen
+actions whose behavior barely changes, because a big collection that quietly goes
+stale would defeat the whole point.
 
 ---
 
