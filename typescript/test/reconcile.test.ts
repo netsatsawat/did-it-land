@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { CapsuleError, capsuleFromDoc } from "../src/capsule.ts";
 import type { HttpRequest } from "../src/capsule.ts";
-import { EffectError, reconcile, unwind } from "../src/reconcile.ts";
+import { EffectError, TransportError, reconcile, unwind } from "../src/reconcile.ts";
 import type { Response, Transport } from "../src/reconcile.ts";
 import { bundled } from "../src/registry.ts";
 
@@ -107,6 +107,20 @@ test("missing context placeholder throws", async () => {
     () => reconcile(capsule, { bucket: "my-bucket" }, route("HEAD", "/x", { statusCode: 404 })),
     (err: unknown) => err instanceof EffectError && String(err).includes("key"),
   );
+});
+
+test("a timed-out probe answers unknown instead of throwing", async () => {
+  const capsule = bundled().get("stripe.charge");
+  const timingOut = {
+    send() {
+      throw new TransportError("timed out");
+    },
+  };
+  const outcome = await reconcile(capsule, { order_id: "ORD-1" }, timingOut);
+  assert.equal(outcome.status, "unknown");
+
+  const comp = await unwind(capsule, { payment_intent_id: "pi_1" }, timingOut);
+  assert.equal(comp.status, "unknown");
 });
 
 test("validator rejects a bad capsule", () => {

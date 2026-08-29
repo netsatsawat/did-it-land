@@ -5,7 +5,7 @@ import unittest
 from did_it_land.capsule import Request
 from did_it_land.reconcile import EffectError, reconcile, unwind
 from did_it_land.registry import bundled
-from did_it_land.transport import Response
+from did_it_land.transport import Response, TransportError
 
 
 class ScriptedTransport:
@@ -81,6 +81,17 @@ class TestHttpProbe(unittest.TestCase):
             reconcile(capsule, {"bucket": "my-bucket"}, transport=t)
         self.assertIn("key", str(ctx.exception))
 
+    def test_timeout_during_probe_is_unknown_not_a_crash(self):
+        capsule = self.reg.get("stripe.charge")
+
+        class TimingOut:
+            def send(self, request):
+                raise TransportError("GET /v1/payment_intents/search: timed out")
+
+        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=TimingOut())
+        self.assertEqual(outcome.status, "unknown")
+        self.assertIn("timed out", outcome.evidence["transport_error"])
+
     def test_http_probe_needs_transport(self):
         capsule = self.reg.get("stripe.charge")
         with self.assertRaises(EffectError):
@@ -106,6 +117,17 @@ class TestUnwind(unittest.TestCase):
         capsule = self.reg.get("github.merge_pr")
         result = unwind(capsule, {})
         self.assertEqual(result.status, "irreversible")
+
+    def test_timeout_during_compensation_is_unknown_and_retryable(self):
+        capsule = self.reg.get("stripe.charge")
+
+        class TimingOut:
+            def send(self, request):
+                raise TransportError("POST /v1/refunds: timed out")
+
+        result = unwind(capsule, {"payment_intent_id": "pi_1"}, transport=TimingOut())
+        self.assertEqual(result.status, "unknown",
+                         "the refund may have landed, so report unknown, never failed")
 
     def test_failed_compensation_reports_failed(self):
         capsule = self.reg.get("stripe.charge")

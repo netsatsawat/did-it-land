@@ -18,6 +18,7 @@ See examples/dbos_charge.py for the wiring inside a real DBOS workflow.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -54,21 +55,34 @@ def guard(
         capsule: Capsule,
         context: dict,
         transport: Transport | None,
-        do: Callable[[], object]) -> object:
+        do: Callable[[], object],
+        unknown_retries: int = 0,
+        unknown_wait: float = 2.0,
+        sleep: Callable[[float], None] = time.sleep) -> object:
     """Probe with the capsule, then act only if the effect definitely has not landed.
 
-    landed skips the call, not_landed runs it, and unknown raises UnknownOutcome
-    rather than guessing. Note the freshness caveat: an eventually consistent probe
-    (Stripe search, for one) can answer not_landed moments after the effect landed,
-    so a recovery path should wait out the vendor's freshness window before trusting
-    a not_landed that follows a crash.
+    landed skips the call and not_landed runs it. An unknown answer (an outage, a
+    timeout, money still in flight) is never acted on. By default guard raises
+    UnknownOutcome immediately so the engine's own retry policy takes over. Give it
+    unknown_retries and it will wait unknown_wait seconds and ask again that many
+    times before raising, a bounded patience rather than an open-ended hang.
+
+    One freshness caveat stands either way: an eventually consistent probe (Stripe
+    search, for one) can answer not_landed moments after the effect landed, so a
+    recovery path should wait out the vendor's freshness window before trusting a
+    not_landed that follows a crash.
     """
-    outcome = reconcile(capsule, context, transport=transport)
-    if outcome.landed:
-        return Skipped(capsule.id, outcome)
-    if outcome.unknown:
-        raise UnknownOutcome(outcome)
-    return do()
+    attempts = max(0, int(unknown_retries)) + 1
+    outcome = None
+    for attempt in range(attempts):
+        outcome = reconcile(capsule, context, transport=transport)
+        if outcome.landed:
+            return Skipped(capsule.id, outcome)
+        if outcome.not_landed:
+            return do()
+        if attempt + 1 < attempts:
+            sleep(unknown_wait)
+    raise UnknownOutcome(outcome)
 
 
 @dataclass

@@ -42,6 +42,33 @@ class TestGuard(unittest.TestCase):
         self.assertEqual(calls, [], "an unknown probe result must never fire the side effect")
         self.assertEqual(raised.exception.outcome.status, "unknown")
 
+    def test_guard_waits_then_succeeds_when_the_answer_arrives(self):
+        answers = [
+            Response(503, {}),
+            Response(503, {}),
+            Response(200, {"data": [{"id": "pi_1", "status": "succeeded"}]})]
+
+        class Sequenced:
+            def send(self, request):
+                return answers.pop(0)
+
+        naps = []
+        result = guard(
+            self.capsule, {"order_id": "ORD-1"}, Sequenced(), lambda: "charged",
+            unknown_retries=2, unknown_wait=5.0, sleep=naps.append)
+        self.assertIsInstance(result, Skipped)
+        self.assertEqual(naps, [5.0, 5.0], "one wait per unknown answer, then success")
+
+    def test_guard_gives_up_after_bounded_retries(self):
+        outage = OneRoute(Response(503, {}))
+        naps = []
+        with self.assertRaises(UnknownOutcome):
+            guard(
+                self.capsule, {"order_id": "ORD-1"}, outage, lambda: "charged",
+                unknown_retries=2, unknown_wait=1.0, sleep=naps.append)
+        self.assertEqual(len(naps), 2, "bounded patience, never an open-ended hang")
+        self.assertEqual(len(outage.seen), 3, "initial probe plus two retries")
+
     def test_guard_treats_money_in_flight_as_unknown(self):
         processing = OneRoute(Response(200, {"data": [{"id": "pi_1", "status": "processing"}]}))
         with self.assertRaises(UnknownOutcome):

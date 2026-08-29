@@ -132,7 +132,8 @@ knows exactly how to ask about this kind of action. Then it puts the question to
 **service**, the payment company in our example, and reads the current state from the
 reply. Solid arrows are questions going out. Dashed arrows are answers coming back.
 The final dashed arrow carries one of three words back to the engine: it went through,
-it did not, or we cannot tell yet. The engine acts only on a definite answer.
+it did not, or we cannot tell yet. The engine acts only on a definite answer. A probe that cannot reach the service at
+all, timeouts included, counts as unknown too, never as a no.
 
 ## 🏛️ Where it fits in a company system
 
@@ -171,9 +172,9 @@ late. The file format is documented in
 
 ## 🔌 Using it with DBOS
 
-DBOS is one of the engines that restarts crashed work from the last saved step. Wrap a
-step in `guard` and the rerun asks before it acts. It skips work that already
-happened, runs work that did not, and refuses to guess when the answer is unknown:
+DBOS is one of the engines that restarts crashed work from the last saved step. Wrap a step in `guard` and the rerun asks before it acts. It skips work that already
+happened, runs work that did not, and refuses to guess when the answer is unknown. If
+you prefer, tell it how many times to wait and ask again before giving up:
 
 ```python
 from did_it_land import bundled

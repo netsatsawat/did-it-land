@@ -15,6 +15,14 @@ from typing import Protocol, runtime_checkable
 from .capsule import Request
 
 
+class TransportError(RuntimeError):
+    """The service could not be reached or did not answer in time.
+
+    A transport that raises this tells reconcile and unwind that the question went
+    unanswered, which is an unknown outcome, not a no. Custom transports should
+    raise it for timeouts and connection failures."""
+
+
 @dataclass(frozen=True)
 class Response:
     status_code: int
@@ -54,12 +62,15 @@ class HttpxTransport:
 
         url = self.base_url + request.path
         merged = {**self.headers, **request.headers}
-        resp = httpx.request(
-            request.method,
-            url,
-            params=request.query or None,
-            headers=merged or None,
-            timeout=self.timeout)
+        try:
+            resp = httpx.request(
+                request.method,
+                url,
+                params=request.query or None,
+                headers=merged or None,
+                timeout=self.timeout)
+        except httpx.TransportError as exc:
+            raise TransportError(f"{request.method} {url}: {exc}") from exc
         body: object
         try:
             body = resp.json()
