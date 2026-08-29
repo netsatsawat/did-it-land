@@ -189,17 +189,25 @@ def architecture() -> SVG:
 
     s.arrow(cx, 163, cx, 201)
     s.arrow(cx, 275, cx, 311)
-    s.arrow(cx, 389, cx, 461, label="on recovery and rollback", lx=cx + 18, ly=428)
+    s.arrow(cx, 389, cx, 460, label="on recovery and rollback", lx=cx + 18, ly=428)
     s.arrow(772, 352, 911, 352, dashed=True, color="#8a939c", marker="ag")
-    # normal step calls bypass, drawn down the left margin
-    s.path_arrow([(390, 352), (66, 352), (66, 790), (81, 790)], color="#8a939c",
+    # reconciliation reaches the systems of record through an orthogonal bus:
+    # one trunk down, one distribution bar, one clean drop per system
+    s.raw(f'<line x1="{cx}" y1="615" x2="{cx}" y2="700" stroke="#444" '
+          f'stroke-width="{STROKE}"/>')
+    s.raw(f'<line x1="150" y1="700" x2="1040" y2="700" stroke="#444" '
+          f'stroke-width="{STROKE}"/>')
+    s.text(cx + 16, 662, "probe and compensate", size=15, fill="#57606a",
+           anchor="start")
+    for x in (210, 490, 770):
+        s.arrow(x, 700, x, 751)
+    s.arrow(1040, 700, 1040, 738)
+    # normal step calls join the same bus from the left margin
+    s.path_arrow([(390, 352), (66, 352), (66, 700), (142, 700)], color="#8a939c",
                  marker="ag")
-    s.text(84, 726, "normal step calls", size=15, fill="#8a939c", anchor="start")
-    # reconciliation to the systems of record
-    for x in (210, 490, 770, 1040):
-        s.arrow(cx + (x - cx) * 0.32, 616, x, 752)
+    s.text(84, 676, "normal step calls", size=15, fill="#8a939c", anchor="start")
     # the verdict returns to the orchestrator
-    s.path_arrow([(830, 462), (830, 394)], color="#555", dashed=True)
+    s.path_arrow([(830, 465), (830, 392)], color="#555", dashed=True)
     s.text(846, 432, "landed / not landed / unknown", size=15, fill="#57606a",
            anchor="start")
 
