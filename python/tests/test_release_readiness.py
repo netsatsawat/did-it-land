@@ -4,7 +4,7 @@ import re
 import unittest
 from pathlib import Path
 
-import effectkit
+import did_it_land
 
 ROOT = Path(__file__).resolve().parents[2]
 PKG_ROOT = ROOT / "python"
@@ -26,12 +26,12 @@ def changelog_version() -> str:
 
 class TestReleaseReadiness(unittest.TestCase):
     def test_version_synced_in_three_places(self):
-        self.assertEqual(effectkit.__version__, pyproject_version(), "pyproject vs __version__")
-        self.assertEqual(effectkit.__version__, changelog_version(), "CHANGELOG vs __version__")
+        self.assertEqual(did_it_land.__version__, pyproject_version(), "pyproject vs __version__")
+        self.assertEqual(did_it_land.__version__, changelog_version(), "CHANGELOG vs __version__")
 
     def test_corpus_mirror_in_sync(self):
         src = {p.name: p.read_text(encoding="utf-8") for p in (ROOT / "capsules").glob("*.yaml")}
-        mirror_dir = PKG_ROOT / "src" / "effectkit" / "_corpus"
+        mirror_dir = PKG_ROOT / "src" / "did_it_land" / "_corpus"
         mirror = {p.name: p.read_text(encoding="utf-8") for p in mirror_dir.glob("*.yaml")}
         self.assertEqual(src, mirror, "run python scripts/sync_corpus.py")
 

@@ -1,10 +1,10 @@
-# effectkit
+# did-it-land
 
 > Your durable worker crashed mid-tool-call. Did the charge actually fire, and how do you
-> reverse it? effectkit is the per-vendor knowledge that answers both, as data.
+> reverse it? did-it-land is the per-vendor knowledge that answers both, as data.
 
 ```ts
-import { bundled, reconcile, unwind } from "effectkit";
+import { bundled, reconcile, unwind } from "did-it-land";
 
 const charge = bundled().get("stripe.charge");
 
@@ -20,6 +20,6 @@ await unwind(charge, { payment_intent_id: "pi_123" }, stripeTransport);
 v1 ships four capsules: `stripe.charge`, `s3.delete_object`, `github.merge_pr`, and
 `postgres.insert`. Same corpus as the Python package. Full docs in the repository.
 
-Homepage and docs: https://github.com/netsatsawat/effectkit
+Homepage and docs: https://github.com/netsatsawat/did-it-land
 
 Written by Satsawat Natakarnkitkul. License: MIT.

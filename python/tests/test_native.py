@@ -3,8 +3,8 @@ from __future__ import annotations
 import sqlite3
 import unittest
 
-from effectkit.reconcile import EffectError, reconcile, unwind
-from effectkit.registry import bundled
+from did_it_land.reconcile import EffectError, reconcile, unwind
+from did_it_land.registry import bundled
 
 
 def sqlite_with_row() -> sqlite3.Connection:

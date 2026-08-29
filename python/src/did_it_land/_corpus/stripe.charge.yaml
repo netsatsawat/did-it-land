@@ -57,7 +57,7 @@ compensation:
     query:
       payment_intent: "{payment_intent_id}"
     headers:
-      Idempotency-Key: "effectkit-refund-{payment_intent_id}"
+      Idempotency-Key: "did-it-land-refund-{payment_intent_id}"
   notes: >
     Refund the payment intent found by the probe, with its own idempotency key
     derived from the payment intent id, so a crashed compensation cannot refund

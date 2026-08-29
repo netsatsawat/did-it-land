@@ -3,9 +3,9 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from effectkit.capsule import Capsule
-from effectkit.reconcile import EffectError
-from effectkit.registry import Registry, bundled, load_dir
+from did_it_land.capsule import Capsule
+from did_it_land.reconcile import EffectError
+from did_it_land.registry import Registry, bundled, load_dir
 
 ROOT = Path(__file__).resolve().parents[2]
 

@@ -1,4 +1,4 @@
-// effectkit: know whether a side-effect landed, and how to reverse it.
+// did-it-land: know whether a side-effect landed, and how to reverse it.
 
 export * from "./capsule.ts";
 export * from "./reconcile.ts";

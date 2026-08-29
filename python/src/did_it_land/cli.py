@@ -1,9 +1,9 @@
-"""The effectkit command line.
+"""The did-it-land command line.
 
-    effectkit list              show the bundled capsules
-    effectkit validate [DIR]    validate a corpus (defaults to the bundled one)
-    effectkit demo              run the no-keys crash-and-reconcile demo
-    effectkit schema            print the schema version
+    did-it-land list              show the bundled capsules
+    did-it-land validate [DIR]    validate a corpus (defaults to the bundled one)
+    did-it-land demo              run the no-keys crash-and-reconcile demo
+    did-it-land schema            print the schema version
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def _cmd_demo(_args: argparse.Namespace) -> int:
     from .demo import run_demo
 
     result = run_demo()
-    ok = result["naive_charges"] == 2 and result["effectkit_charges"] == 1
+    ok = result["naive_charges"] == 2 and result["did_it_land_charges"] == 1
     return 0 if ok else 1
 
 
@@ -50,8 +50,8 @@ def _cmd_schema(_args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="effectkit", description=__doc__)
-    parser.add_argument("--version", action="version", version=f"effectkit {__version__}")
+    parser = argparse.ArgumentParser(prog="did-it-land", description=__doc__)
+    parser.add_argument("--version", action="version", version=f"did-it-land {__version__}")
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("list", help="show the bundled capsules").set_defaults(func=_cmd_list)

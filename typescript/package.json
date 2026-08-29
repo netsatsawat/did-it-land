@@ -1,14 +1,14 @@
 {
-  "name": "effectkit",
+  "name": "did-it-land",
   "version": "0.1.0",
   "description": "Know whether a side-effect landed, and how to reverse it: a corpus of per-vendor effect capsules for durable and saga workflows.",
   "type": "module",
   "license": "MIT",
   "author": "Satsawat Natakarnkitkul",
-  "homepage": "https://github.com/netsatsawat/effectkit",
+  "homepage": "https://github.com/netsatsawat/did-it-land",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/netsatsawat/effectkit.git",
+    "url": "git+https://github.com/netsatsawat/did-it-land.git",
     "directory": "typescript"
   },
   "keywords": [

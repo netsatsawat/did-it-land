@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import unittest
 
-from effectkit.adapters.dbos import Saga, Skipped, UnknownOutcome, guard
-from effectkit.capsule import Request
-from effectkit.registry import bundled
-from effectkit.transport import Response
+from did_it_land.adapters.dbos import Saga, Skipped, UnknownOutcome, guard
+from did_it_land.capsule import Request
+from did_it_land.registry import bundled
+from did_it_land.transport import Response
 
 
 class OneRoute:

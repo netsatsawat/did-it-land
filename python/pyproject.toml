@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "effectkit"
+name = "did-it-land"
 version = "0.1.0"
 description = "Know whether a side-effect landed, and how to reverse it: a corpus of per-vendor effect capsules for durable and saga workflows."
 readme = "README.md"
@@ -29,14 +29,14 @@ http = ["httpx>=0.27"]
 dbos = ["dbos>=0.10"]
 
 [project.urls]
-Homepage = "https://github.com/netsatsawat/effectkit"
-Documentation = "https://github.com/netsatsawat/effectkit/blob/main/docs/CAPSULE-SCHEMA.md"
+Homepage = "https://github.com/netsatsawat/did-it-land"
+Documentation = "https://github.com/netsatsawat/did-it-land/blob/main/docs/CAPSULE-SCHEMA.md"
 
 [project.scripts]
-effectkit = "effectkit.cli:main"
+did-it-land = "did_it_land.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-effectkit = ["_corpus/*.yaml"]
+did_it_land = ["_corpus/*.yaml"]

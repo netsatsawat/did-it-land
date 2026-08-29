@@ -4,7 +4,7 @@ The repository root holds the one true corpus. The Python wheel needs its own co
 package data, so this script mirrors it. Run it after editing a capsule. In CI, pass
 --check to fail if the mirror has drifted from the source.
 
-    python scripts/sync_corpus.py          # copy capsules/ -> python/src/effectkit/_corpus/
+    python scripts/sync_corpus.py          # copy capsules/ -> python/src/did_it_land/_corpus/
     python scripts/sync_corpus.py --check   # verify they match, exit 1 on drift
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "capsules"
-DST = ROOT / "python" / "src" / "effectkit" / "_corpus"
+DST = ROOT / "python" / "src" / "did_it_land" / "_corpus"
 
 
 def _read(path: Path) -> dict[str, str]:

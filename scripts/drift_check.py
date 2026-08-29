@@ -30,7 +30,7 @@ def stripe_live() -> bool | None:
 
     resp = httpx.get(
         "https://api.stripe.com/v1/payment_intents/search",
-        params={"query": 'metadata["order_id"]:"effectkit-drift-probe"'},
+        params={"query": 'metadata["order_id"]:"did-it-land-drift-probe"'},
         headers={"Authorization": f"Bearer {key}"},
         timeout=15.0)
     return resp.status_code == 200 and isinstance(resp.json().get("data"), list)

@@ -1,6 +1,6 @@
-# The effectkit capsule schema (v1)
+# The did-it-land capsule schema (v1)
 
-A capsule is the unit of the effectkit corpus. It describes one external operation and
+A capsule is the unit of the did-it-land corpus. It describes one external operation and
 carries the two pieces of knowledge that durable and saga engines leave to you: how to
 tell whether the operation landed after an ambiguous crash, and how to reverse it. The
 machine-readable contract is `schema/capsule.schema.json`. This page explains the intent

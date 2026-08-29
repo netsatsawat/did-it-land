@@ -1,4 +1,4 @@
-=== effectkit demo: did my charge land? ===
+=== did-it-land demo: did my charge land? ===
 A durable worker charges a customer, then crashes before recording the result.
 
 Run A, naive recovery
@@ -6,7 +6,7 @@ Run A, naive recovery
   recovery  : the idempotency key was lost, so the retry uses a new key
   result    : 2 charges for ORD-1, the customer is double charged
 
-Run B, recovery with effectkit
+Run B, recovery with did-it-land
   attempt 1 : charged, then the worker crashed before the checkpoint
   recovery  : reconcile(stripe.charge, order_id=ORD-1) -> landed
   result    : 1 charge for ORD-1, reconciled, no double charge

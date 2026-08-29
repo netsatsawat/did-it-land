@@ -238,7 +238,7 @@ export const CORPUS: unknown[] = [
           "payment_intent": "{payment_intent_id}"
         },
         "headers": {
-          "Idempotency-Key": "effectkit-refund-{payment_intent_id}"
+          "Idempotency-Key": "did-it-land-refund-{payment_intent_id}"
         }
       },
       "notes": "Refund the payment intent found by the probe, with its own idempotency key derived from the payment intent id, so a crashed compensation cannot refund twice either. A refund reverses the money movement but Stripe keeps the original processing fees, and on some asynchronous payment methods a refund can fail after being accepted, so treat compensated as accepted, not settled.\n"
