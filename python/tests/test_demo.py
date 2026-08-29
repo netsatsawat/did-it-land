@@ -21,8 +21,17 @@ class TestDemo(unittest.TestCase):
         self.assertEqual(self.result["naive_charges"], 2)
         self.assertEqual(self.result["did_it_land_charges"], 1)
 
-    def test_reconcile_and_unwind_statuses(self):
+    def test_every_answer_is_staged(self):
         self.assertEqual(self.result["reconcile_status"], "landed")
+        self.assertEqual(self.result["not_landed_status"], "not_landed")
+        self.assertEqual(self.result["unknown_status"], "unknown")
+        self.assertEqual(self.result["reprobe_status"], "landed")
+
+    def test_not_landed_and_unknown_paths_charge_exactly_once(self):
+        self.assertEqual(self.result["not_landed_charges"], 1)
+        self.assertEqual(self.result["unknown_then_charges"], 1)
+
+    def test_unwind_refunds(self):
         self.assertEqual(self.result["unwind_status"], "compensated")
 
     def test_output_matches_golden(self):

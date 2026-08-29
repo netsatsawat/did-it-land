@@ -40,7 +40,12 @@ def _cmd_demo(_args: argparse.Namespace) -> int:
     from .demo import run_demo
 
     result = run_demo()
-    ok = result["naive_charges"] == 2 and result["did_it_land_charges"] == 1
+    ok = (
+        result["naive_charges"] == 2
+        and result["did_it_land_charges"] == 1
+        and result["not_landed_charges"] == 1
+        and result["unknown_then_charges"] == 1
+        and result["unknown_status"] == "unknown")
     return 0 if ok else 1
 
 

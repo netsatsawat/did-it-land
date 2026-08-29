@@ -63,12 +63,14 @@ did-it-land demo
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/demo.gif" alt="Terminal recording of the demo: the naive restart charges the customer twice, the did-it-land restart checks first and keeps it to one charge, then the undo issues the refund." width="80%">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/demo.gif" alt="Terminal recording of the demo staging all three answers: the naive restart charges the customer twice, a landed answer skips the retry, a not landed answer runs the step exactly once, an unknown answer waits for the service and asks again, and the undo issues the refund." width="80%">
 </p>
 
-It stages the same crash twice. The first run restarts blindly and ends with two
-charges for one order. The second run asks first, hears that the charge went through,
-and ends with one. Then it refunds it, one call.
+It stages the crash four ways. The naive restart charges twice. Three checked runs
+follow, one per answer, and each ends with exactly one charge: the first hears the
+charge went through and skips the retry, the second finds nothing and safely runs the
+step, and the third gets no answer from a downed service, so it waits and asks again
+instead of guessing. Then a refund undoes the landed charge, one call.
 
 ## 💊 The fix is a small file
 
