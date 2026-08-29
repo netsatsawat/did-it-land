@@ -8,8 +8,11 @@ flat bold flowchart color with decision diamonds. The sequence diagram is classi
 pale yellow lifeline heads, maroon lines, solid calls and dashed returns. Every image
 carries the repo signature bottom-left, the same way the social preview does.
 
-Writes assets/{architecture,workflow,sequence}.svg and .png (2x, via headless
-Chrome, same mechanism the hand-drawn tool uses).
+Readability rules learned the hard way: base type stays 16px or larger because GitHub
+scales the image to its column, strokes stay 2.4px so the auto-scaled arrowheads read,
+elbow arrows get rounded corners, and a line that must cross another hops over it.
+
+Writes assets/{architecture,workflow,sequence}.svg and .png (2x, via headless Chrome).
 
     python3 scripts/make_diagrams.py
 """
@@ -26,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SIG = "github.com/netsatsawat/did-it-land"
 SANS = "Helvetica Neue, Helvetica, Arial, sans-serif"
 MONO = "Menlo, Monaco, monospace"
+STROKE = 2.4
 
 # draw.io pastel pairs: fill, border
 BLUE = ("#dae8fc", "#6c8ebf")
@@ -37,9 +41,25 @@ PINK = ("#f8cecc", "#b85450")
 # flat workflow palette
 W_TEAL, W_BLUE, W_ORANGE = "#1a9988", "#3d7dd8", "#f0a030"
 W_RED, W_GREEN, W_PURPLE = "#d9534f", "#3d9a50", "#7d5ba6"
+W_SLATE = "#455a64"
 
 # UML sequence
 UML_LINE, UML_HEAD = "#9a2b2b", "#fefece"
+
+
+def elbow_d(points, r=14):
+    """Orthogonal path with rounded corners through the given points."""
+    d = [f"M{points[0][0]},{points[0][1]}"]
+    for i in range(1, len(points) - 1):
+        (px, py), (cx, cy), (nx, ny) = points[i - 1], points[i], points[i + 1]
+        ix = 0 if cx == px else (1 if cx > px else -1)
+        iy = 0 if cy == py else (1 if cy > py else -1)
+        ox = 0 if nx == cx else (1 if nx > cx else -1)
+        oy = 0 if ny == cy else (1 if ny > cy else -1)
+        d.append(f"L{cx - ix * r},{cy - iy * r}")
+        d.append(f"Q{cx},{cy} {cx + ox * r},{cy + oy * r}")
+    d.append(f"L{points[-1][0]},{points[-1][1]}")
+    return " ".join(d)
 
 
 class SVG:
@@ -49,79 +69,85 @@ class SVG:
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
             f'viewBox="0 0 {w} {h}">',
             '<defs>'
-            '<marker id="ab" markerWidth="10" markerHeight="8" refX="8" refY="4" '
-            'orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#444"/></marker>'
-            '<marker id="am" markerWidth="10" markerHeight="8" refX="8" refY="4" '
-            f'orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="{UML_LINE}"/></marker>'
-            '<marker id="aw" markerWidth="10" markerHeight="8" refX="8" refY="4" '
-            'orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#555"/></marker>'
+            '<marker id="ab" markerWidth="9" markerHeight="7" refX="7.5" refY="3.5" '
+            'orient="auto"><path d="M0,0 L8.5,3.5 L0,7 z" fill="#444"/></marker>'
+            '<marker id="am" markerWidth="9" markerHeight="7" refX="7.5" refY="3.5" '
+            f'orient="auto"><path d="M0,0 L8.5,3.5 L0,7 z" fill="{UML_LINE}"/></marker>'
+            '<marker id="ag" markerWidth="9" markerHeight="7" refX="7.5" refY="3.5" '
+            'orient="auto"><path d="M0,0 L8.5,3.5 L0,7 z" fill="#8a939c"/></marker>'
             '</defs>',
             f'<rect width="{w}" height="{h}" fill="#ffffff"/>']
 
     def raw(self, s: str) -> None:
         self.parts.append(s)
 
-    def text(self, x, y, s, size=15, fill="#1f2328", anchor="middle", weight="normal",
+    def text(self, x, y, s, size=17, fill="#1f2328", anchor="middle", weight="normal",
              family=SANS, style=""):
         s = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         self.parts.append(
             f'<text x="{x}" y="{y}" font-family="{family}" font-size="{size}" '
             f'fill="{fill}" text-anchor="{anchor}" font-weight="{weight}" {style}>{s}</text>')
 
-    def lines_in(self, cx, cy, rows, size=15, fill="#1f2328", weight="normal", gap=19):
+    def lines_in(self, cx, cy, rows, size=17, fill="#1f2328", weight="normal", gap=23):
         y0 = cy - gap * (len(rows) - 1) / 2 + size / 3
         for i, row in enumerate(rows):
             self.text(cx, y0 + i * gap, row, size=size, fill=fill, weight=weight)
 
-    def box(self, cx, cy, w, h, fill, border, rows, size=15, rx=10, bold_first=False):
+    def box(self, cx, cy, w, h, fill, border, rows, size=17, rx=12, bold_first=False):
         self.parts.append(
             f'<rect x="{cx - w/2}" y="{cy - h/2}" width="{w}" height="{h}" rx="{rx}" '
-            f'fill="{fill}" stroke="{border}" stroke-width="1.6"/>')
+            f'fill="{fill}" stroke="{border}" stroke-width="{STROKE}"/>')
         if bold_first and len(rows) > 1:
-            self.lines_in(cx, cy - 10, rows[:1], size=size, weight="600")
-            self.lines_in(cx, cy + 11, rows[1:], size=size - 2, fill="#57606a")
-        else:
+            self.lines_in(cx, cy - 12, rows[:1], size=size + 1, weight="600")
+            self.lines_in(cx, cy + 13, rows[1:], size=size - 1, fill="#57606a")
+        elif rows and rows[0]:
             self.lines_in(cx, cy, rows, size=size,
                           weight="600" if bold_first else "normal")
 
+    def flat(self, cx, cy, w, h, color, rows, rx=14, size=18):
+        self.parts.append(
+            f'<rect x="{cx - w/2}" y="{cy - h/2}" width="{w}" height="{h}" rx="{rx}" '
+            f'fill="{color}"/>')
+        self.lines_in(cx, cy, rows, size=size, fill="#ffffff", weight="600", gap=24)
+
     def cylinder(self, cx, cy, w, h, fill, border, rows):
-        ry = 12
+        ry = 14
         self.parts.append(
             f'<path d="M{cx - w/2},{cy - h/2 + ry} '
             f'a{w/2},{ry} 0 0,1 {w},0 v{h - 2*ry} a{w/2},{ry} 0 0,1 -{w},0 z" '
-            f'fill="{fill}" stroke="{border}" stroke-width="1.6"/>')
+            f'fill="{fill}" stroke="{border}" stroke-width="{STROKE}"/>')
         self.parts.append(
             f'<path d="M{cx - w/2},{cy - h/2 + ry} a{w/2},{ry} 0 0,0 {w},0" '
-            f'fill="none" stroke="{border}" stroke-width="1.6"/>')
-        self.lines_in(cx, cy + 6, rows, size=14)
+            f'fill="none" stroke="{border}" stroke-width="{STROKE}"/>')
+        self.lines_in(cx, cy + 8, rows, size=16, gap=21)
 
     def diamond(self, cx, cy, w, h, fill, rows):
         self.parts.append(
             f'<path d="M{cx},{cy - h/2} L{cx + w/2},{cy} L{cx},{cy + h/2} '
             f'L{cx - w/2},{cy} z" fill="{fill}"/>')
-        self.lines_in(cx, cy, rows, size=15, fill="#ffffff", weight="600")
+        self.lines_in(cx, cy, rows, size=18, fill="#ffffff", weight="600", gap=24)
 
     def arrow(self, x1, y1, x2, y2, label="", dashed=False, color="#444",
-              marker="ab", lx=None, ly=None, lsize=13, lfill="#57606a"):
-        dash = ' stroke-dasharray="6,5"' if dashed else ""
+              marker="ab", lx=None, ly=None, lsize=16, lfill="#57606a"):
+        dash = ' stroke-dasharray="7,6"' if dashed else ""
         self.parts.append(
             f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" '
-            f'stroke-width="1.6" marker-end="url(#{marker})"{dash}/>')
+            f'stroke-width="{STROKE}" marker-end="url(#{marker})"{dash}/>')
         if label:
-            self.text(lx if lx is not None else (x1 + x2) / 2 + 8,
-                      ly if ly is not None else (y1 + y2) / 2 - 7,
+            self.text(lx if lx is not None else (x1 + x2) / 2 + 9,
+                      ly if ly is not None else (y1 + y2) / 2 - 9,
                       label, size=lsize, fill=lfill,
                       anchor="middle" if lx is None else "start")
 
-    def path_arrow(self, points, color="#444", marker="ab", dashed=False):
-        d = "M" + " L".join(f"{x},{y}" for x, y in points)
-        dash = ' stroke-dasharray="6,5"' if dashed else ""
+    def path_arrow(self, points, color="#444", marker="ab", dashed=False, d=None):
+        d = d or elbow_d(points)
+        dash = ' stroke-dasharray="7,6"' if dashed else ""
         self.parts.append(
-            f'<path d="{d}" fill="none" stroke="{color}" stroke-width="1.6" '
+            f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{STROKE}" '
             f'marker-end="url(#{marker})"{dash}/>')
 
     def signature(self):
-        self.text(26, self.h - 20, SIG, size=16, fill="#6e7781", anchor="start",
+        self.text(28, self.h - 24, SIG, size=18, fill="#6e7781", anchor="start",
                   family=MONO)
 
     def write(self, path: Path):
@@ -130,51 +156,51 @@ class SVG:
 
 
 def architecture() -> SVG:
-    s = SVG(1240, 820)
-    cx = 560
-    s.text(cx, 44, "Where side-effect reconciliation sits in an enterprise agent stack",
-           size=20, fill="#57606a", weight="600")
+    s = SVG(1280, 940)
+    cx = 580
+    s.text(cx, 52, "Where side-effect reconciliation sits in an enterprise agent stack",
+           size=23, fill="#57606a", weight="600")
 
-    s.box(cx, 106, 320, 56, *BLUE, ["Business channels", "users, apps, operations"],
+    s.box(cx, 128, 380, 70, *BLUE, ["Business channels", "users, apps, operations"],
           bold_first=True)
-    s.box(cx, 206, 320, 56, *PURPLE, ["Agent layer", "plans work, chooses actions"],
+    s.box(cx, 240, 380, 70, *PURPLE, ["Agent layer", "plans work, chooses actions"],
           bold_first=True)
-    s.box(cx, 306, 320, 62, *YELLOW,
+    s.box(cx, 352, 380, 74, *YELLOW,
           ["Durable orchestration", "checkpoints, retries, recovery"], bold_first=True)
-    s.box(1040, 306, 260, 62, *PURPLE,
+    s.box(1080, 352, 330, 74, *PURPLE,
           ["Observability & audit", "traces, action records"], bold_first=True)
 
     # the reconciliation band, with its two halves
-    s.box(cx, 452, 640, 124, *GREEN, [""])
-    s.text(cx, 412, "Side-effect reconciliation  (did-it-land)", size=17, weight="600",
-           fill="#1f2328")
-    s.box(cx - 150, 458, 240, 52, "#ffffff", GREEN[1],
+    s.box(cx, 540, 700, 150, *GREEN, [""])
+    s.text(cx, 490, "Side-effect reconciliation  (did-it-land)", size=20,
+           weight="600", fill="#1f2328")
+    s.box(cx - 165, 542, 280, 66, "#ffffff", GREEN[1],
           ["probe", "did the call land?"], bold_first=True)
-    s.box(cx + 150, 458, 240, 52, "#ffffff", GREEN[1],
+    s.box(cx + 165, 542, 280, 66, "#ffffff", GREEN[1],
           ["undo", "run the compensation"], bold_first=True)
-    s.text(cx, 502, "one capsule per operation: data, not code", size=13,
+    s.text(cx, 598, "one capsule per operation: data, not code", size=15,
            fill="#57606a")
 
-    ext = [
-        (200, "Payment provider"), (440, "Object store"),
-        (680, "Message service"), (920, "Relational database")]
-    for x, label in ext[:3]:
-        s.box(x, 650, 210, 54, *PINK, [label])
-    s.cylinder(920, 650, 150, 74, *PINK, ["Relational", "database"])
+    for x, label in (
+            (210, "Payment provider"), (490, "Object store"),
+            (770, "Message service")):
+        s.box(x, 790, 250, 66, *PINK, [label], size=17)
+    s.cylinder(1040, 790, 180, 92, *PINK, ["Relational", "database"])
 
-    s.arrow(cx, 134, cx, 172)
-    s.arrow(cx, 234, cx, 268)
-    s.arrow(cx, 337, cx, 388, label="on recovery and rollback", lx=cx + 16, ly=366)
-    s.arrow(722, 306, 908, 306, dashed=True, color="#999")
+    s.arrow(cx, 163, cx, 201)
+    s.arrow(cx, 275, cx, 311)
+    s.arrow(cx, 389, cx, 461, label="on recovery and rollback", lx=cx + 18, ly=428)
+    s.arrow(772, 352, 911, 352, dashed=True, color="#8a939c", marker="ag")
     # normal step calls bypass, drawn down the left margin
-    s.path_arrow([(400, 306), (80, 306), (80, 650), (89, 650)], color="#999")
-    s.text(96, 590, "normal step calls", size=13, fill="#8a939c", anchor="start")
+    s.path_arrow([(390, 352), (66, 352), (66, 790), (81, 790)], color="#8a939c",
+                 marker="ag")
+    s.text(84, 726, "normal step calls", size=15, fill="#8a939c", anchor="start")
     # reconciliation to the systems of record
-    for x, _ in ext:
-        s.arrow(cx + (x - cx) * 0.35, 514, x, 618)
+    for x in (210, 490, 770, 1040):
+        s.arrow(cx + (x - cx) * 0.32, 616, x, 752)
     # the verdict returns to the orchestrator
-    s.path_arrow([(760, 414), (760, 340)], color="#555", marker="aw", dashed=True)
-    s.text(774, 380, "landed / not landed / unknown", size=13, fill="#57606a",
+    s.path_arrow([(830, 462), (830, 394)], color="#555", dashed=True)
+    s.text(846, 432, "landed / not landed / unknown", size=15, fill="#57606a",
            anchor="start")
 
     s.signature()
@@ -182,111 +208,97 @@ def architecture() -> SVG:
 
 
 def workflow() -> SVG:
-    s = SVG(1240, 940)
-    cx = 620
-    s.text(cx, 42, "The crash-recovery workflow", size=20, fill="#57606a",
+    s = SVG(1280, 1080)
+    cx = 640
+    s.text(cx, 50, "The crash-recovery workflow", size=23, fill="#57606a",
            weight="600")
 
-    s.box(cx, 88, 150, 44, W_TEAL, W_TEAL, ["Start"], rx=22)
-    s.lines_in(cx, 88, ["Start"], fill="#ffffff", weight="600")
-    s.box(cx, 168, 340, 52, W_BLUE, W_BLUE, [""], rx=14)
-    s.lines_in(cx, 168, ["A workflow step calls", "an external service"],
-               fill="#ffffff", weight="600", gap=20)
-    s.box(cx, 258, 340, 52, W_RED, W_RED, [""], rx=14)
-    s.lines_in(cx, 258, ["The process crashes", "before the checkpoint"],
-               fill="#ffffff", weight="600", gap=20)
-    s.box(cx, 348, 340, 52, W_PURPLE, W_PURPLE, [""], rx=14)
-    s.lines_in(cx, 348, ["Recovery probes with the", "operation's capsule"],
-               fill="#ffffff", weight="600", gap=20)
+    s.flat(cx, 106, 180, 54, W_TEAL, ["Start"], rx=27, size=19)
+    s.flat(cx, 196, 410, 66, W_BLUE, ["A workflow step calls", "an external service"])
+    s.flat(cx, 296, 410, 66, W_RED, ["The process crashes", "before the checkpoint"])
+    s.flat(cx, 396, 410, 66, W_PURPLE,
+           ["Recovery probes with the", "operation's capsule"])
 
-    s.diamond(cx, 468, 220, 110, W_ORANGE, ["Did it", "land?"])
+    s.diamond(cx, 532, 260, 136, W_ORANGE, ["Did it", "land?"])
 
-    s.box(280, 468, 280, 52, W_GREEN, W_GREEN, [""], rx=14)
-    s.lines_in(280, 468, ["Skip the retry,", "reuse the result"], fill="#ffffff",
-               weight="600", gap=20)
-    s.box(960, 468, 280, 52, W_BLUE, W_BLUE, [""], rx=14)
-    s.lines_in(960, 468, ["Run the step,", "same idempotency key"], fill="#ffffff",
-               weight="600", gap=20)
-    s.box(cx, 590, 280, 52, W_ORANGE, W_ORANGE, [""], rx=14)
-    s.lines_in(cx, 590, ["Wait, then", "probe again"], fill="#ffffff", weight="600",
-               gap=20)
+    s.flat(280, 532, 320, 66, W_GREEN, ["Skip the retry,", "reuse the result"])
+    s.flat(1000, 532, 320, 66, W_BLUE, ["Run the step,", "same idempotency key"])
+    s.flat(cx, 668, 310, 66, W_ORANGE, ["Wait, then", "probe again"])
 
-    s.box(cx, 700, 340, 52, "#455a64", "#455a64", [""], rx=14)
-    s.lines_in(cx, 700, ["Checkpoint written:", "exactly one effect"], fill="#ffffff",
-               weight="600", gap=20)
+    s.flat(cx, 800, 400, 66, W_SLATE, ["Checkpoint written:", "exactly one effect"])
 
-    s.diamond(cx, 810, 210, 100, W_PURPLE, ["Roll", "back?"])
-    s.box(960, 810, 280, 52, W_RED, W_RED, [""], rx=14)
-    s.lines_in(960, 810, ["Unwind runs the", "compensation"], fill="#ffffff",
-               weight="600", gap=20)
-    s.box(280, 810, 150, 44, W_TEAL, W_TEAL, [""], rx=22)
-    s.lines_in(280, 810, ["Done"], fill="#ffffff", weight="600")
+    s.diamond(cx, 922, 240, 116, W_PURPLE, ["Roll", "back?"])
+    s.flat(1000, 922, 320, 66, W_RED, ["Unwind runs the", "compensation"])
+    s.flat(280, 922, 180, 54, W_TEAL, ["Done"], rx=27, size=19)
 
-    s.arrow(cx, 110, cx, 138)
-    s.arrow(cx, 194, cx, 228)
-    s.arrow(cx, 284, cx, 318)
-    s.arrow(cx, 374, cx, 409)
-    s.arrow(510, 468, 424, 468, label="yes", lx=452, ly=456)
-    s.arrow(730, 468, 816, 468, label="no", lx=766, ly=456)
-    s.arrow(cx, 523, cx, 560, label="unknown", lx=cx + 14, ly=546)
-    # the re-probe loop back up the left side of the spine
-    s.path_arrow([(480, 590), (170, 590), (170, 348), (446, 348)], color="#999")
+    s.arrow(cx, 133, cx, 159)
+    s.arrow(cx, 229, cx, 259)
+    s.arrow(cx, 329, cx, 359)
+    s.arrow(cx, 429, cx, 460)
+    s.arrow(510, 532, 444, 532, label="yes", lx=460, ly=516)
+    s.arrow(770, 532, 836, 532, label="no", lx=792, ly=516)
+    s.arrow(cx, 600, cx, 631, label="unknown", lx=cx + 16, ly=620)
+    # the re-probe loop: left out of the wait box, up the margin, back into the
+    # probe box, hopping over the yes branch's merge line at x=280
+    s.path_arrow(
+        None, color="#8a939c", marker="ag",
+        d="M480,668 L293,668 A13,13 0 0 0 267,668 L172,668 Q158,668 158,654 "
+          "L158,410 Q158,396 172,396 L431,396")
     # both resolved branches meet at the checkpoint
-    s.path_arrow([(280, 494), (280, 700), (446, 700)])
-    s.path_arrow([(960, 494), (960, 700), (794, 700)])
-    s.arrow(cx, 726, cx, 756)
-    s.arrow(725, 810, 816, 810, label="yes", lx=756, ly=798)
-    s.arrow(515, 810, 359, 810, label="no", lx=436, ly=798)
-    s.path_arrow([(960, 836), (960, 900), (280, 900), (280, 836)])
+    s.path_arrow([(280, 565), (280, 800), (436, 800)])
+    s.path_arrow([(1000, 565), (1000, 800), (844, 800)])
+    s.arrow(cx, 833, cx, 860)
+    s.arrow(765, 922, 836, 922, label="yes", lx=788, ly=906)
+    s.arrow(515, 922, 374, 922, label="no", lx=436, ly=906)
+    s.path_arrow([(1000, 955), (1000, 1020), (280, 1020), (280, 953)])
 
     s.signature()
     return s
 
 
 def sequence() -> SVG:
-    s = SVG(1080, 660)
-    # frame and its sd tab
-    s.raw('<rect x="14" y="14" width="1052" height="590" fill="none" '
-          f'stroke="{UML_LINE}" stroke-width="1.2"/>')
-    s.raw(f'<path d="M14,14 h330 v26 l-12,12 H14 z" fill="{UML_HEAD}" '
-          f'stroke="{UML_LINE}" stroke-width="1.2"/>')
-    s.text(24, 40, "sd Did It Land ( orderId ) : outcome", size=15, weight="600",
+    s = SVG(1200, 740)
+    s.raw(f'<rect x="16" y="16" width="1168" height="650" fill="none" '
+          f'stroke="{UML_LINE}" stroke-width="1.6"/>')
+    s.raw(f'<path d="M16,16 h390 v32 l-14,14 H16 z" fill="{UML_HEAD}" '
+          f'stroke="{UML_LINE}" stroke-width="1.6"/>')
+    s.text(28, 48, "sd Did It Land ( orderId ) : outcome", size=18, weight="600",
            anchor="start", fill="#1f2328")
 
     heads = [
-        (200, "engine : DurableWorkflow"), (470, "guard : ReconcileGuard"),
-        (700, "capsules : EffectCorpus"), (930, "service : ExternalAPI")]
+        (220, "engine : DurableWorkflow"), (520, "guard : ReconcileGuard"),
+        (780, "capsules : EffectCorpus"), (1030, "service : ExternalAPI")]
     for x, label in heads:
-        s.raw(f'<rect x="{x - 105}" y="70" width="210" height="36" fill="{UML_HEAD}" '
-              f'stroke="{UML_LINE}" stroke-width="1.4"/>')
-        s.text(x, 93, label, size=14, weight="600",
+        s.raw(f'<rect x="{x - 118}" y="88" width="236" height="42" fill="{UML_HEAD}" '
+              f'stroke="{UML_LINE}" stroke-width="1.8"/>')
+        s.text(x, 115, label, size=16, weight="600",
                style='text-decoration="underline"')
-        s.raw(f'<line x1="{x}" y1="106" x2="{x}" y2="560" stroke="{UML_LINE}" '
-              'stroke-width="1" stroke-dasharray="6,5"/>')
+        s.raw(f'<line x1="{x}" y1="130" x2="{x}" y2="618" stroke="{UML_LINE}" '
+              'stroke-width="1.2" stroke-dasharray="7,6"/>')
 
     def act(x, y1, y2):
-        s.raw(f'<rect x="{x - 6}" y="{y1}" width="12" height="{y2 - y1}" '
-              f'fill="#ffffff" stroke="{UML_LINE}" stroke-width="1.2"/>')
+        s.raw(f'<rect x="{x - 7}" y="{y1}" width="14" height="{y2 - y1}" '
+              f'fill="#ffffff" stroke="{UML_LINE}" stroke-width="1.5"/>')
 
-    act(200, 150, 520)
-    act(470, 162, 490)
-    act(700, 216, 262)
-    act(930, 318, 368)
+    act(220, 180, 590)
+    act(520, 194, 556)
+    act(780, 256, 310)
+    act(1030, 376, 436)
 
     def call(x1, x2, y, label):
-        s.arrow(x1 + 6, y, x2 - 6, y, color=UML_LINE, marker="am")
-        s.text((x1 + x2) / 2, y - 8, label, size=14, fill="#1f2328")
+        s.arrow(x1 + 7, y, x2 - 7, y, color=UML_LINE, marker="am")
+        s.text((x1 + x2) / 2, y - 10, label, size=17, fill="#1f2328")
 
     def ret(x1, x2, y, label):
-        s.arrow(x1 - 6, y, x2 + 6, y, color=UML_LINE, marker="am", dashed=True)
-        s.text((x1 + x2) / 2, y - 8, label, size=14, fill="#57606a")
+        s.arrow(x1 - 7, y, x2 + 7, y, color=UML_LINE, marker="am", dashed=True)
+        s.text((x1 + x2) / 2, y - 10, label, size=17, fill="#57606a")
 
-    call(200, 470, 162, "reconcile ( orderId )")
-    call(470, 700, 216, "lookup ( operation )")
-    ret(700, 470, 258, "capsule")
-    call(470, 930, 318, "probe ( orderId )")
-    ret(930, 470, 364, "current state")
-    ret(470, 200, 452, "landed | not_landed | unknown")
+    call(220, 520, 194, "reconcile ( orderId )")
+    call(520, 780, 256, "lookup ( operation )")
+    ret(780, 520, 306, "capsule")
+    call(520, 1030, 376, "probe ( orderId )")
+    ret(1030, 520, 432, "current state")
+    ret(520, 220, 520, "landed | not_landed | unknown")
 
     s.signature()
     return s
