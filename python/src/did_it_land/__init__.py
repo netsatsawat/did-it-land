@@ -20,7 +20,7 @@ from .reconcile import (
     reconcile,
     unwind)
 from .registry import Registry, bundled, load_dir
-from .transport import HttpxTransport, Response, Transport
+from .transport import HttpxTransport, Response, Transport, TransportError
 
 __version__ = "0.1.0"
 
@@ -35,6 +35,7 @@ __all__ = [
     "Registry",
     "Response",
     "Transport",
+    "TransportError",
     "bundled",
     "capsule_from_dict",
     "load_capsule",

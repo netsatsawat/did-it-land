@@ -25,6 +25,11 @@ export interface CompensationResult {
 
 export class EffectError extends Error {}
 
+/** The service could not be reached or did not answer in time. A transport that
+ * throws this tells reconcile and unwind the question went unanswered, which is an
+ * unknown outcome, not a no. */
+export class TransportError extends Error {}
+
 export interface NativeHandler {
   probe(capsule: Capsule, context: Record<string, unknown>): Outcome | Promise<Outcome>;
   compensate(
@@ -123,7 +128,15 @@ export async function reconcile(
     return getHandler(probe.handler).probe(capsule, context);
   }
   if (!transport) throw new EffectError(`${capsule.id}: an http probe needs a transport`);
-  const resp = await transport.send(bindRequest(probe.request!, context, capsule.id));
+  let resp: Response;
+  try {
+    resp = await transport.send(bindRequest(probe.request!, context, capsule.id));
+  } catch (err) {
+    if (err instanceof TransportError) {
+      return { status: "unknown", capsuleId: capsule.id, evidence: { transport_error: String(err) } };
+    }
+    throw err;
+  }
   for (const rule of probe.interpret) {
     const [ok, evidence] = match(rule, resp);
     if (ok) {
@@ -150,7 +163,15 @@ export async function unwind(
     return getHandler(comp.handler).compensate(capsule, context);
   }
   if (!transport) throw new EffectError(`${capsule.id}: an http compensation needs a transport`);
-  const resp = await transport.send(bindRequest(comp.request!, context, capsule.id));
+  let resp: Response;
+  try {
+    resp = await transport.send(bindRequest(comp.request!, context, capsule.id));
+  } catch (err) {
+    if (err instanceof TransportError) {
+      return { status: "unknown", capsuleId: capsule.id };
+    }
+    throw err;
+  }
   const ok = resp.statusCode >= 200 && resp.statusCode < 300;
   return { status: ok ? "compensated" : "failed", capsuleId: capsule.id };
 }

@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .capsule import Capsule, Request, UNSET
-from .transport import Response, Transport
+from .transport import Response, Transport, TransportError
 
 
 class EffectError(RuntimeError):
@@ -121,7 +121,10 @@ def reconcile(
         return native.get_handler(probe.handler).probe(capsule, context)
     if transport is None:
         raise EffectError(f"{capsule.id}: an http probe needs a transport")
-    resp = transport.send(_bind_request(probe.request, context, capsule.id))
+    try:
+        resp = transport.send(_bind_request(probe.request, context, capsule.id))
+    except TransportError as exc:
+        return Outcome("unknown", capsule.id, {"transport_error": str(exc)})
     for rule in probe.interpret:
         matched, evidence = _match(rule, resp)
         if matched:
@@ -146,6 +149,11 @@ def unwind(
         return native.get_handler(comp.handler).compensate(capsule, context)
     if transport is None:
         raise EffectError(f"{capsule.id}: an http compensation needs a transport")
-    resp = transport.send(_bind_request(comp.request, context, capsule.id))
+    try:
+        resp = transport.send(_bind_request(comp.request, context, capsule.id))
+    except TransportError as exc:
+        # The undo may or may not have landed. Its request carries its own
+        # idempotency key, so retrying unwind with the same context stays safe.
+        return CompensationResult("unknown", capsule.id, {"transport_error": str(exc)})
     status = "compensated" if resp.ok else "failed"
     return CompensationResult(status, capsule.id, {"status_code": resp.status_code})
