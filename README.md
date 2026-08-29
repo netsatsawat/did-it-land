@@ -1,7 +1,12 @@
-<h1 align="center">did-it-land</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/banner-dark.png">
+    <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/banner-light.png" alt="did-it-land: the worker died mid-charge. Did it land, and how do you undo it?" width="100%">
+  </picture>
+</h1>
 
 <p align="center">
-  <a href="#-why-this-exists">Why</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#-sixty-seconds-no-keys">Sixty seconds</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#-the-four-capsules">The capsules</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#-using-it-with-dbos">DBOS</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://satsawat.ai/#newsletter">Newsletter</a>
+  <a href="#-the-problem">The problem</a> · <a href="#-see-it-fail-then-see-the-fix">See it fail</a> · <a href="#-what-a-capsule-is">Capsules</a> · <a href="#-using-it-with-dbos">DBOS</a> · <a href="https://satsawat.ai/#newsletter">Newsletter</a>
 </p>
 
 <p align="center">
@@ -9,47 +14,83 @@
   <a href="https://github.com/netsatsawat/did-it-land/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/netsatsawat/did-it-land/ci.yml?style=for-the-badge&label=CI" alt="CI status"></a>
   <a href="https://github.com/netsatsawat/did-it-land/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/TypeScript-node%2018%2B-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript, node 18+">
   <img src="https://img.shields.io/badge/API%20keys-none-1baf7a?style=for-the-badge" alt="No API keys">
   <img src="https://img.shields.io/badge/capsules-4-8a5cf6?style=for-the-badge" alt="4 capsules">
   <a href="https://satsawat.ai"><img src="https://img.shields.io/badge/author-satsawat.ai-e8a112?style=for-the-badge" alt="Author: satsawat.ai"></a>
 </p>
 
-> Your durable worker crashed mid-tool-call. Did the charge actually fire, and how do you
-> reverse it? did-it-land is the per-vendor knowledge that answers both, as data.
+> Your worker charged a customer, then died before it could write that down. The engine
+> re-runs the step. The customer pays twice. did-it-land is the per-vendor knowledge that
+> stops this: did the call land, and how do you reverse it, shipped as data.
 
-Durable and saga engines (DBOS, Temporal, LangGraph durable, Inngest) resume a crashed
-workflow from its last checkpoint, then hand you the hard part: query the vendor to see
-whether the side-effect landed, and write your own compensation. did-it-land ships that
-per-vendor knowledge as a small corpus of **effect capsules** plus a thin runtime, in
-Python and TypeScript, reading the same capsules.
+## 💸 The problem
 
-## ⚡ Sixty seconds, no keys
+Durable workflow engines (DBOS, Temporal, LangGraph durable, Inngest) checkpoint your
+workflow and resume it after a crash. Inside their own state, the guarantee is real. But
+a step that calls Stripe does two things: it makes the call, and it records that the
+call happened. Those are separate writes to separate systems. When the process dies
+between them, the vendor has the money and your engine has nothing. On recovery, the
+engine re-runs the step, because as far as it can tell the step never ran.
+
+Every engine's documentation answers this with "make your steps idempotent" and moves
+on. That is the homework this repo does for you. Answering "did the call land" takes
+vendor-specific knowledge: which endpoint to ask, which field to trust, which statuses
+mean money moved, and when the honest answer is "wait and ask again". Reversing the call
+takes more of the same. No engine ships that knowledge, because it lives in each
+vendor's docs and in the memories of people who already paid for the lesson.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/flow.png" alt="Hand-drawn flow: a step calls the vendor and crashes before the checkpoint. Recovery runs the capsule probe. Landed skips the retry, not landed runs the step with the same key, both rejoin at the checkpoint with exactly one charge. Unknown waits and asks again." width="70%">
+</p>
+
+## ⚡ See it fail, then see the fix
+
+No keys, no network, one screen:
 
 ```
 pip install did-it-land
 did-it-land demo
 ```
 
-The demo stages the exact failure, with an in-process fake and no network:
+<p align="center">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/demo.gif" alt="Terminal replay of the demo: naive recovery double-charges the customer, recovery with did-it-land reconciles to a single charge, then unwind issues the refund." width="80%">
+</p>
 
+The demo stages the crash twice against an in-process fake Stripe. Naive recovery mints
+a fresh idempotency key and charges again. The did-it-land path asks first, hears
+"landed", and skips the retry. Then it reverses the charge with one call.
+
+## 💊 What a capsule is
+
+One YAML file per external operation, carrying the answers to both questions:
+
+```yaml
+id: stripe.charge
+probe:                  # did it land?
+  request: GET /v1/payment_intents/search?query=metadata["order_id"]:"{order_id}"
+  interpret:
+    - status succeeded present    -> landed
+    - status processing present   -> unknown, money is in flight
+    - otherwise on 200            -> not_landed
+compensation:           # how do I reverse it?
+  request: POST /v1/refunds
+  headers: {Idempotency-Key: did-it-land-refund-{payment_intent_id}}
+reversibility: reversible, but Stripe keeps the fees
+source: five links to Stripe's own documentation
 ```
-=== did-it-land demo: did my charge land? ===
-A durable worker charges a customer, then crashes before recording the result.
 
-Run A, naive recovery
-  attempt 1 : charged, then the worker crashed before the checkpoint
-  recovery  : the idempotency key was lost, so the retry uses a new key
-  result    : 2 charges for ORD-1, the customer is double charged
+That excerpt is abridged. The real capsule is
+[capsules/stripe.charge.yaml](https://github.com/netsatsawat/did-it-land/blob/main/capsules/stripe.charge.yaml),
+and every claim in it cites the vendor's documentation. The corpus is the product. Both
+runtimes stay thin on purpose and read the same files, so Python and TypeScript can
+never disagree about what a probe means.
 
-Run B, recovery with did-it-land
-  attempt 1 : charged, then the worker crashed before the checkpoint
-  recovery  : reconcile(stripe.charge, order_id=ORD-1) -> landed
-  result    : 1 charge for ORD-1, reconciled, no double charge
+<p align="center">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/architecture.png" alt="Hand-drawn architecture: one canonical capsule corpus feeds a thin Python runtime and a thin TypeScript runtime, which meet in the reconcile and unwind calls used by engine adapters such as the DBOS guard and saga." width="70%">
+</p>
 
-Unwind      : unwind(stripe.charge, pi_0001) -> compensated (refund issued)
-```
-
-In your own code the two calls are `reconcile` and `unwind`:
+In code, the whole surface is two calls:
 
 ```python
 from did_it_land import bundled, reconcile, unwind, HttpxTransport
@@ -57,46 +98,32 @@ from did_it_land import bundled, reconcile, unwind, HttpxTransport
 stripe = HttpxTransport("https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
 charge = bundled().get("stripe.charge")
 
-# After an ambiguous crash: did it land?
 outcome = reconcile(charge, {"order_id": "ORD-1"}, transport=stripe)
 if outcome.landed:
-    ...        # skip the retry, the charge already happened
+    ...        # the charge already happened, do not retry
 
-# Rolling a workflow back:
 unwind(charge, {"payment_intent_id": "pi_123"}, transport=stripe)
 ```
 
-## 🧭 Why this exists
-
-An engine gives you exactly-once for its own checkpoints. It cannot know whether the API
-call inside a step succeeded when the process died before the checkpoint committed. On
-recovery it re-runs the step, and without the per-vendor probe you either double-charge or
-guess. That probe is different for every vendor, it is rarely documented in one place, and
-no engine ships it. That knowledge is what did-it-land is.
-
-The moat is not a secret and not a patent. It is the labor of getting each operation right
-and keeping it current, which is why the corpus stays deliberately small and definite.
-
 ## 🧩 The four capsules
 
-Each capsule answers two questions for one operation: did it land, and how do I reverse it.
-
-| capsule | probe | reversibility |
+| capsule | did it land? | how do I reverse it? |
 |---|---|---|
-| `stripe.charge` | search by the order id in metadata | reversible, refund the payment intent |
-| `s3.delete_object` | HEAD the object | conditionally reversible, only if versioning was on |
-| `github.merge_pr` | read the `merged` field, not the branch | irreversible, a revert is a forward commit |
-| `postgres.insert` | select by the natural key | conditionally reversible, delete by key |
+| `stripe.charge` | search by your order id in metadata, read status client-side | refund, with its own idempotency key |
+| `s3.delete_object` | HEAD the object | restore the version, only if versioning was on |
+| `github.merge_pr` | trust the `merged` field, never the branch | you cannot, a revert is a forward commit |
+| `postgres.insert` | select by the natural key | delete by the same key |
 
-Every v1 capsule was chosen because its answer is definite in the window that matters. An
-operation that can only return `unknown` when you need it does not belong in the corpus.
-The format is documented in [docs/CAPSULE-SCHEMA.md](https://github.com/netsatsawat/did-it-land/blob/main/docs/CAPSULE-SCHEMA.md).
+Four is deliberate. I chose each operation because its probe returns a definite answer
+in the window that matters, and an operation that can only say "unknown" when you need
+it does not belong here. The format is specified in
+[docs/CAPSULE-SCHEMA.md](https://github.com/netsatsawat/did-it-land/blob/main/docs/CAPSULE-SCHEMA.md).
 
 ## 🔌 Using it with DBOS
 
-DBOS resumes from the last completed step, so a step that called a vendor and crashed
-before its checkpoint re-runs on recovery. Wrap the side-effect with `guard`, which probes
-first and acts only if the effect has not already landed.
+DBOS resumes from the last completed step, so a step that crashed after calling the
+vendor re-runs on recovery. Wrap the side effect in `guard`, which probes first, acts
+only on a definite "not landed", and refuses to guess on "unknown":
 
 ```python
 from did_it_land import bundled
@@ -109,33 +136,37 @@ def charge_customer(order_id: str) -> object:
     return guard(charge, {"order_id": order_id}, stripe, lambda: create_charge(order_id))
 ```
 
-`Saga` records each completed effect so a failed workflow can walk them back with `unwind`
-in reverse order. See [python/examples/dbos_charge.py](https://github.com/netsatsawat/did-it-land/blob/main/python/examples/dbos_charge.py).
+`Saga` records each completed effect so a failed workflow can walk them back with
+`unwind` in reverse order. The full wiring is in
+[python/examples/dbos_charge.py](https://github.com/netsatsawat/did-it-land/blob/main/python/examples/dbos_charge.py).
 
-## 🧪 How it is tested
+## 🧪 How it stays honest
 
-Two tiers, so the default path needs no keys and the corpus still cannot silently rot.
-
-The offline tier runs on every push against local fakes and emulators, proving the runtime
-and the shape of each capsule. The scheduled tier ([drift.yml](https://github.com/netsatsawat/did-it-land/blob/main/.github/workflows/drift.yml))
-hits real vendor sandboxes weekly to catch API drift and writes
-[reports/freshness.json](https://github.com/netsatsawat/did-it-land/blob/main/reports/freshness.json).
-A recorded fixture that stays green forever after an API changes is exactly the false
-assurance this avoids.
+A frozen test fixture stays green forever, even after the vendor changes its API, and a
+green light on stale knowledge is worse than no light. So testing runs in two tiers.
+The offline tier runs on every push against local fakes, with no keys, proving the
+runtimes and the shape of every capsule. The scheduled tier
+([drift.yml](https://github.com/netsatsawat/did-it-land/blob/main/.github/workflows/drift.yml))
+hits real vendor sandboxes weekly and stamps
+[reports/freshness.json](https://github.com/netsatsawat/did-it-land/blob/main/reports/freshness.json)
+with the date each capsule was last confirmed against the live API. CI also recomputes
+every number this README states from the committed artifacts, and fails when one drifts.
 
 ## 🚫 What this deliberately is not
 
-It is not an observability platform, not an eval or a benchmark, and not another durable
-engine. It is the per-vendor probe-and-compensation data those engines leave to you, held
-in one place and kept honest.
+Not an observability platform, not an eval, not a benchmark, and not another durable
+engine. It is the per-vendor probe-and-undo data those engines leave as an exercise for
+the reader, collected in one place and kept current.
 
 ## 🗺️ Roadmap
 
 More capsules, each added only with a live-sandbox drift test attached. A TypeScript
-engine adapter. The outbound argument side of a capsule. Held to a dozen stable operations
-on purpose, because breadth that must stay current is what sinks a solo corpus.
+engine adapter. The outbound argument side of a capsule. The corpus stays at a dozen or
+so stable operations on purpose, because breadth that must stay current is what turns a
+corpus into folklore.
 
 ---
 
-Written by [Satsawat Natakarnkitkul](https://satsawat.ai). Newsletter:
+Written by [Satsawat Natakarnkitkul](https://satsawat.ai). Companion article: *The Retry
+That Charges Twice* (in draft). Newsletter:
 [AI in Practice](https://satsawat.ai/#newsletter). License: MIT.

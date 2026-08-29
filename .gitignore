@@ -10,3 +10,4 @@ node_modules/
 typescript/dist/
 .pytest_cache/
 .DS_Store
+assets/demo-last-frame.png
