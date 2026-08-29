@@ -28,13 +28,28 @@ class TestHttpProbe(unittest.TestCase):
         capsule = self.reg.get("stripe.charge")
         path = "/v1/payment_intents/search"
         cases = [
-            (Response(200, {"data": [{"id": "pi_1"}]}), "landed"),
+            (Response(200, {"data": [{"id": "pi_1", "status": "succeeded"}]}), "landed"),
+            (Response(200, {"data": [{"id": "pi_1", "status": "requires_payment_method"}]}),
+                "not_landed"),
+            (Response(200, {"data": [{"id": "pi_1", "status": "processing"}]}), "unknown"),
             (Response(200, {"data": []}), "not_landed"),
             (Response(503, {}), "unknown")]
         for resp, expected in cases:
             t = ScriptedTransport({("GET", path): resp})
             outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
-            self.assertEqual(outcome.status, expected, msg=f"status {resp.status_code}")
+            self.assertEqual(outcome.status, expected, msg=f"body {resp.body}")
+
+    def test_stripe_probe_surfaces_duplicates(self):
+        capsule = self.reg.get("stripe.charge")
+        path = "/v1/payment_intents/search"
+        body = {"data": [
+            {"id": "pi_1", "status": "succeeded"},
+            {"id": "pi_2", "status": "succeeded"},
+            {"id": "pi_3", "status": "requires_payment_method"}]}
+        t = ScriptedTransport({("GET", path): Response(200, body)})
+        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        self.assertEqual(outcome.status, "landed")
+        self.assertEqual(outcome.evidence["matched"], 2, "two succeeded intents is a duplicate")
 
     def test_s3_probe_results(self):
         capsule = self.reg.get("s3.delete_object")
@@ -76,12 +91,16 @@ class TestUnwind(unittest.TestCase):
     def setUp(self):
         self.reg = bundled()
 
-    def test_stripe_compensation_refunds(self):
+    def test_stripe_compensation_refunds_with_its_own_idempotency_key(self):
         capsule = self.reg.get("stripe.charge")
         t = ScriptedTransport({("POST", "/v1/refunds"): Response(200, {"id": "re_1"})})
         result = unwind(capsule, {"payment_intent_id": "pi_1"}, transport=t)
         self.assertEqual(result.status, "compensated")
         self.assertEqual(t.seen[0].query["payment_intent"], "pi_1")
+        self.assertEqual(
+            t.seen[0].headers["Idempotency-Key"],
+            "effectkit-refund-pi_1",
+            "a crashed compensation must not refund twice either")
 
     def test_github_merge_is_irreversible(self):
         capsule = self.reg.get("github.merge_pr")

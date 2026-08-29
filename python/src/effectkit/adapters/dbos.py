@@ -34,15 +34,40 @@ class Skipped:
     outcome: Outcome
 
 
+class UnknownOutcome(RuntimeError):
+    """The probe could not tell whether the effect landed, so guard refused to act.
+
+    Firing a side effect on an unknown answer is a guess, and for money-moving
+    operations a guess in either direction is the bug this library exists to remove.
+    The caller decides how to wait and re-probe: re-raise so the durable engine
+    retries the step later, or catch and re-run guard after a delay.
+    """
+
+    def __init__(self, outcome: Outcome):
+        super().__init__(
+            f"{outcome.capsule_id}: probe returned unknown "
+            f"(evidence {outcome.evidence}), refusing to run the side effect")
+        self.outcome = outcome
+
+
 def guard(
         capsule: Capsule,
         context: dict,
         transport: Transport | None,
         do: Callable[[], object]) -> object:
-    """Probe with the capsule, then act only if the effect has not already landed."""
+    """Probe with the capsule, then act only if the effect definitely has not landed.
+
+    landed skips the call, not_landed runs it, and unknown raises UnknownOutcome
+    rather than guessing. Note the freshness caveat: an eventually consistent probe
+    (Stripe search, for one) can answer not_landed moments after the effect landed,
+    so a recovery path should wait out the vendor's freshness window before trusting
+    a not_landed that follows a crash.
+    """
     outcome = reconcile(capsule, context, transport=transport)
     if outcome.landed:
         return Skipped(capsule.id, outcome)
+    if outcome.unknown:
+        raise UnknownOutcome(outcome)
     return do()
 
 

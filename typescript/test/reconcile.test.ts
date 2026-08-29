@@ -43,7 +43,12 @@ test("stripe probe maps responses to statuses", async () => {
   const capsule = bundled().get("stripe.charge");
   const path = "/v1/payment_intents/search";
   const cases: [Response, string][] = [
-    [{ statusCode: 200, body: { data: [{ id: "pi_1" }] } }, "landed"],
+    [{ statusCode: 200, body: { data: [{ id: "pi_1", status: "succeeded" }] } }, "landed"],
+    [
+      { statusCode: 200, body: { data: [{ id: "pi_1", status: "requires_payment_method" }] } },
+      "not_landed",
+    ],
+    [{ statusCode: 200, body: { data: [{ id: "pi_1", status: "processing" }] } }, "unknown"],
     [{ statusCode: 200, body: { data: [] } }, "not_landed"],
     [{ statusCode: 503, body: {} }, "unknown"],
   ];
@@ -70,12 +75,27 @@ test("github probe trusts merged, not the branch", async () => {
   assert.equal((await reconcile(capsule, ctx, route("GET", path, { statusCode: 200, body: { merged: false } }))).status, "not_landed");
 });
 
+test("stripe probe surfaces duplicate succeeded intents in evidence", async () => {
+  const capsule = bundled().get("stripe.charge");
+  const body = {
+    data: [
+      { id: "pi_1", status: "succeeded" },
+      { id: "pi_2", status: "succeeded" },
+    ],
+  };
+  const t = route("GET", "/v1/payment_intents/search", { statusCode: 200, body });
+  const outcome = await reconcile(capsule, { order_id: "ORD-1" }, t);
+  assert.equal(outcome.status, "landed");
+  assert.equal(outcome.evidence?.matched, 2);
+});
+
 test("unwind: stripe refunds, github is irreversible", async () => {
   const reg = bundled();
   const stripe = route("POST", "/v1/refunds", { statusCode: 200, body: { id: "re_1" } });
   const comp = await unwind(reg.get("stripe.charge"), { payment_intent_id: "pi_1" }, stripe);
   assert.equal(comp.status, "compensated");
   assert.equal(stripe.seen[0].query.payment_intent, "pi_1");
+  assert.equal(stripe.seen[0].headers["Idempotency-Key"], "effectkit-refund-pi_1");
 
   const merge = await unwind(reg.get("github.merge_pr"), {});
   assert.equal(merge.status, "irreversible");

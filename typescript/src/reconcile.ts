@@ -15,6 +15,7 @@ export interface Transport {
 export interface Outcome {
   status: Result;
   capsuleId: string;
+  evidence?: Record<string, unknown>;
 }
 
 export interface CompensationResult {
@@ -82,17 +83,34 @@ function navigate(body: unknown, path: string): [boolean, unknown] {
   return [true, cur];
 }
 
-function match(rule: Rule, resp: Response): boolean {
-  if (rule.statusIn !== undefined && !rule.statusIn.includes(resp.statusCode)) return false;
-  if (rule.jsonPath !== undefined) {
-    const [found, value] = navigate(resp.body, rule.jsonPath);
-    if (rule.exists !== undefined && found !== rule.exists) return false;
-    if (rule.countGte !== undefined) {
-      if (!found || !Array.isArray(value) || value.length < rule.countGte) return false;
-    }
-    if (rule.hasEquals && (!found || value !== rule.equals)) return false;
+function filtered(value: unknown, where?: Record<string, unknown>): unknown {
+  if (!where || !Array.isArray(value)) return value;
+  return value.filter(
+    (item) =>
+      item !== null &&
+      typeof item === "object" &&
+      Object.entries(where).every(([k, v]) => (item as Record<string, unknown>)[k] === v),
+  );
+}
+
+function match(rule: Rule, resp: Response): [boolean, Record<string, unknown>] {
+  const evidence: Record<string, unknown> = {};
+  if (rule.statusIn !== undefined && !rule.statusIn.includes(resp.statusCode)) {
+    return [false, evidence];
   }
-  return true;
+  if (rule.jsonPath !== undefined) {
+    const [found, raw] = navigate(resp.body, rule.jsonPath);
+    const value = filtered(raw, rule.where);
+    if (rule.exists !== undefined && found !== rule.exists) return [false, evidence];
+    if (rule.countGte !== undefined) {
+      if (!found || !Array.isArray(value) || value.length < rule.countGte) {
+        return [false, evidence];
+      }
+      evidence.matched = value.length;
+    }
+    if (rule.hasEquals && (!found || value !== rule.equals)) return [false, evidence];
+  }
+  return [true, evidence];
 }
 
 export async function reconcile(
@@ -107,9 +125,13 @@ export async function reconcile(
   if (!transport) throw new EffectError(`${capsule.id}: an http probe needs a transport`);
   const resp = await transport.send(bindRequest(probe.request!, context, capsule.id));
   for (const rule of probe.interpret) {
-    if (match(rule, resp)) return { status: rule.result, capsuleId: capsule.id };
+    const [ok, evidence] = match(rule, resp);
+    if (ok) {
+      evidence.status_code = resp.statusCode;
+      return { status: rule.result, capsuleId: capsule.id, evidence };
+    }
   }
-  return { status: "unknown", capsuleId: capsule.id };
+  return { status: "unknown", capsuleId: capsule.id, evidence: { status_code: resp.statusCode } };
 }
 
 export async function unwind(

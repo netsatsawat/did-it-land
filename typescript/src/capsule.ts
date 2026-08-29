@@ -26,6 +26,7 @@ export interface Rule {
   hasEquals: boolean;
   equals?: unknown;
   countGte?: number;
+  where?: Record<string, unknown>;
 }
 
 export interface Probe {
@@ -65,7 +66,7 @@ export interface Capsule {
   compensation?: Compensation;
   summary?: string;
   notes?: string;
-  source?: string;
+  source?: string | string[];
 }
 
 export class CapsuleError extends Error {}
@@ -137,6 +138,7 @@ function ruleFrom(value: unknown, where: string): Rule {
     hasEquals: "equals" in when,
     equals: "equals" in when ? when.equals : undefined,
     countGte: "count_gte" in when ? Number(when.count_gte) : undefined,
+    where: "where" in when ? (when.where as Record<string, unknown>) : undefined,
   };
 }
 
@@ -215,6 +217,6 @@ export function capsuleFromDoc(value: unknown, where = "capsule"): Capsule {
     compensation: compensationFrom(doc.compensation),
     summary: doc.summary as string | undefined,
     notes: doc.notes as string | undefined,
-    source: doc.source as string | undefined,
+    source: doc.source as string | string[] | undefined,
   };
 }
