@@ -87,7 +87,13 @@
       }
     },
     "notes": { "type": "string" },
-    "source": { "type": "string", "description": "doc URL the capsule was derived from" }
+    "source": {
+      "description": "doc URL(s) the capsule was derived from",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      ]
+    }
   },
   "$defs": {
     "request": {
@@ -130,7 +136,12 @@
             },
             "exists": { "type": "boolean" },
             "equals": {},
-            "count_gte": { "type": "integer" }
+            "count_gte": { "type": "integer" },
+            "where": {
+              "type": "object",
+              "additionalProperties": {},
+              "description": "when the json_path target is an array, keep only elements whose named fields equal these values before applying count_gte"
+            }
           }
         },
         "result": { "enum": ["landed", "not_landed", "unknown"] }

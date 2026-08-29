@@ -46,6 +46,7 @@ class Rule:
     exists: bool | None = None
     equals: object = UNSET
     count_gte: int | None = None
+    where: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -90,7 +91,7 @@ class Capsule:
     compensation: Compensation | None = None
     summary: str | None = None
     notes: str | None = None
-    source: str | None = None
+    source: str | list[str] | None = None
 
 
 def _require(doc: dict, key: str, where: str) -> object:
@@ -123,7 +124,8 @@ def _rule_from(doc: dict, where: str) -> Rule:
         json_path=str(when["json_path"]) if "json_path" in when else None,
         exists=bool(when["exists"]) if "exists" in when else None,
         equals=when["equals"] if "equals" in when else UNSET,
-        count_gte=int(when["count_gte"]) if "count_gte" in when else None)
+        count_gte=int(when["count_gte"]) if "count_gte" in when else None,
+        where=dict(when["where"]) if "where" in when else None)
 
 
 def _probe_from(doc: dict) -> Probe:

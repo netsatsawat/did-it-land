@@ -79,19 +79,34 @@ def _navigate(body: object, path: str) -> tuple[bool, object]:
     return True, cur
 
 
-def _match(rule, resp: Response) -> bool:
+def _filtered(value: object, where: dict | None) -> object:
+    """Apply a rule's where clause: keep array elements whose fields equal the given values."""
+    if where is None or not isinstance(value, list):
+        return value
+    kept = []
+    for item in value:
+        if isinstance(item, dict) and all(item.get(k) == v for k, v in where.items()):
+            kept.append(item)
+    return kept
+
+
+def _match(rule, resp: Response) -> tuple[bool, dict]:
+    """Decide whether a rule matches, returning any evidence worth surfacing."""
+    evidence: dict = {}
     if rule.status_in is not None and resp.status_code not in rule.status_in:
-        return False
+        return False, evidence
     if rule.json_path is not None:
         found, value = _navigate(resp.body, rule.json_path)
+        value = _filtered(value, rule.where)
         if rule.exists is not None and found != rule.exists:
-            return False
+            return False, evidence
         if rule.count_gte is not None:
             if not found or not isinstance(value, list) or len(value) < rule.count_gte:
-                return False
+                return False, evidence
+            evidence["matched"] = len(value)
         if rule.equals is not UNSET and (not found or value != rule.equals):
-            return False
-    return True
+            return False, evidence
+    return True, evidence
 
 
 def reconcile(
@@ -108,8 +123,10 @@ def reconcile(
         raise EffectError(f"{capsule.id}: an http probe needs a transport")
     resp = transport.send(_bind_request(probe.request, context, capsule.id))
     for rule in probe.interpret:
-        if _match(rule, resp):
-            return Outcome(rule.result, capsule.id, {"status_code": resp.status_code})
+        matched, evidence = _match(rule, resp)
+        if matched:
+            evidence["status_code"] = resp.status_code
+            return Outcome(rule.result, capsule.id, evidence)
     return Outcome("unknown", capsule.id, {"status_code": resp.status_code})
 
 
