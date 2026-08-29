@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="660" viewBox="0 0 1080 660">
+<defs><marker id="ab" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#444"/></marker><marker id="am" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#9a2b2b"/></marker><marker id="aw" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L9,4 L0,8 z" fill="#555"/></marker></defs>
+<rect width="1080" height="660" fill="#ffffff"/>
+<rect x="14" y="14" width="1052" height="590" fill="none" stroke="#9a2b2b" stroke-width="1.2"/>
+<path d="M14,14 h330 v26 l-12,12 H14 z" fill="#fefece" stroke="#9a2b2b" stroke-width="1.2"/>
+<text x="24" y="40" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" fill="#1f2328" text-anchor="start" font-weight="600" >sd Did It Land ( orderId ) : outcome</text>
+<rect x="95" y="70" width="210" height="36" fill="#fefece" stroke="#9a2b2b" stroke-width="1.4"/>
+<text x="200" y="93" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="600" text-decoration="underline">engine : DurableWorkflow</text>
+<line x1="200" y1="106" x2="200" y2="560" stroke="#9a2b2b" stroke-width="1" stroke-dasharray="6,5"/>
+<rect x="365" y="70" width="210" height="36" fill="#fefece" stroke="#9a2b2b" stroke-width="1.4"/>
+<text x="470" y="93" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="600" text-decoration="underline">guard : ReconcileGuard</text>
+<line x1="470" y1="106" x2="470" y2="560" stroke="#9a2b2b" stroke-width="1" stroke-dasharray="6,5"/>
+<rect x="595" y="70" width="210" height="36" fill="#fefece" stroke="#9a2b2b" stroke-width="1.4"/>
+<text x="700" y="93" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="600" text-decoration="underline">capsules : EffectCorpus</text>
+<line x1="700" y1="106" x2="700" y2="560" stroke="#9a2b2b" stroke-width="1" stroke-dasharray="6,5"/>
+<rect x="825" y="70" width="210" height="36" fill="#fefece" stroke="#9a2b2b" stroke-width="1.4"/>
+<text x="930" y="93" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="600" text-decoration="underline">service : ExternalAPI</text>
+<line x1="930" y1="106" x2="930" y2="560" stroke="#9a2b2b" stroke-width="1" stroke-dasharray="6,5"/>
+<rect x="194" y="150" width="12" height="370" fill="#ffffff" stroke="#9a2b2b" stroke-width="1.2"/>
+<rect x="464" y="162" width="12" height="328" fill="#ffffff" stroke="#9a2b2b" stroke-width="1.2"/>
+<rect x="694" y="216" width="12" height="46" fill="#ffffff" stroke="#9a2b2b" stroke-width="1.2"/>
+<rect x="924" y="318" width="12" height="50" fill="#ffffff" stroke="#9a2b2b" stroke-width="1.2"/>
+<line x1="206" y1="162" x2="464" y2="162" stroke="#9a2b2b" stroke-width="1.6" marker-end="url(#am)"/>
+<text x="335.0" y="154" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="normal" >reconcile ( orderId )</text>
+<line x1="476" y1="216" x2="694" y2="216" stroke="#9a2b2b" stroke-width="1.6" marker-end="url(#am)"/>
+<text x="585.0" y="208" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="normal" >lookup ( operation )</text>
+<line x1="694" y1="258" x2="476" y2="258" stroke="#9a2b2b" stroke-width="1.6" marker-end="url(#am)" stroke-dasharray="6,5"/>
+<text x="585.0" y="250" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#57606a" text-anchor="middle" font-weight="normal" >capsule</text>
+<line x1="476" y1="318" x2="924" y2="318" stroke="#9a2b2b" stroke-width="1.6" marker-end="url(#am)"/>
+<text x="700.0" y="310" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#1f2328" text-anchor="middle" font-weight="normal" >probe ( orderId )</text>
+<line x1="924" y1="364" x2="476" y2="364" stroke="#9a2b2b" stroke-width="1.6" marker-end="url(#am)" stroke-dasharray="6,5"/>
+<text x="700.0" y="356" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#57606a" text-anchor="middle" font-weight="normal" >current state</text>
+<line x1="464" y1="452" x2="206" y2="452" stroke="#9a2b2b" stroke-width="1.6" marker-end="url(#am)" stroke-dasharray="6,5"/>
+<text x="335.0" y="444" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#57606a" text-anchor="middle" font-weight="normal" >landed | not_landed | unknown</text>
+<text x="26" y="640" font-family="Menlo, Monaco, monospace" font-size="16" fill="#6e7781" text-anchor="start" font-weight="normal" >github.com/netsatsawat/did-it-land</text>
+</svg>

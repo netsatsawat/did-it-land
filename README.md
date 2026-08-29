@@ -41,7 +41,7 @@ takes more of the same. No engine ships that knowledge, because it lives in each
 vendor's docs and in the memories of people who already paid for the lesson.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/flow.png" alt="Hand-drawn flow: a step calls the vendor and crashes before the checkpoint. Recovery runs the capsule probe. Landed skips the retry, not landed runs the step with the same key, both rejoin at the checkpoint with exactly one charge. Unknown waits and asks again." width="70%">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/workflow.png" alt="Workflow chart of crash recovery: a step calls an external service, the process crashes before the checkpoint, recovery probes with the operation's capsule, and a decision follows. Landed skips the retry, not landed runs the step with the same idempotency key, unknown waits and probes again. Both resolved paths meet at a checkpoint with exactly one effect, and an optional rollback runs the compensation." width="72%">
 </p>
 
 ## ⚡ See it fail, then see the fix
@@ -86,10 +86,6 @@ and every claim in it cites the vendor's documentation. The corpus is the produc
 runtimes stay thin on purpose and read the same files, so Python and TypeScript can
 never disagree about what a probe means.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/architecture.png" alt="Hand-drawn architecture: one canonical capsule corpus feeds a thin Python runtime and a thin TypeScript runtime, which meet in the reconcile and unwind calls used by engine adapters such as the DBOS guard and saga." width="70%">
-</p>
-
 In code, the whole surface is two calls:
 
 ```python
@@ -104,6 +100,22 @@ if outcome.landed:
 
 unwind(charge, {"payment_intent_id": "pi_123"}, transport=stripe)
 ```
+
+Under the hood, one reconcile call is this exchange:
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/sequence.png" alt="UML sequence diagram: the durable workflow engine calls reconcile on the guard, the guard looks the operation up in the effect corpus and receives its capsule, probes the external API and receives the current state, then returns landed, not landed, or unknown to the engine." width="80%">
+</p>
+
+## 🏛️ Where it sits in an enterprise stack
+
+Between the orchestration layer and the systems of record. The durable engine keeps
+calling services directly on the happy path. On recovery and rollback it consults the
+reconciliation layer, which probes or compensates per capsule and hands back a verdict.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/architecture.png" alt="Enterprise architecture diagram in neutral terms: business channels feed an agent layer, which feeds durable orchestration. On recovery and rollback the orchestrator consults the side-effect reconciliation layer, whose probe and undo halves talk to the systems of record: a payment provider, an object store, a message service, and a relational database. The verdict, landed, not landed, or unknown, returns to the orchestrator, with observability and audit alongside." width="90%">
+</p>
 
 ## 🧩 The four capsules
 
