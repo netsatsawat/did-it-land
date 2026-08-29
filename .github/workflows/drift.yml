@@ -1,0 +1,28 @@
+name: drift
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+jobs:
+  live-sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install
+        run: pip install -e './python[http]'
+      - name: probe live sandboxes
+        run: python scripts/drift_check.py
+        env:
+          STRIPE_TEST_KEY: ${{ secrets.STRIPE_TEST_KEY }}
+      - name: commit freshness report
+        run: |
+          git config user.name "Satsawat Natakarnkitkul"
+          git config user.email "n.satsawat@gmail.com"
+          git add reports/freshness.json
+          git diff --cached --quiet || git commit -m "drift: refresh freshness report"
+          git push

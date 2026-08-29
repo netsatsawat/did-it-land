@@ -1,0 +1,50 @@
+id: github.merge_pr
+provider: github
+operation: merge_pr
+schema_version: "1"
+summary: >
+  Merge a pull request. Answer whether the merge actually happened, telling a real
+  merge apart from a pull request whose branch was merely deleted.
+
+idempotency:
+  strategy: natural_key
+  keys: [owner, repo, pull_number]
+  notes: >
+    A pull request is identified by owner, repo, and number. Merging one that is
+    already merged returns 405, so the natural key is enough to recognize a repeat.
+
+probe:
+  kind: http
+  request:
+    method: GET
+    path: /repos/{owner}/{repo}/pulls/{pull_number}
+  interpret:
+    - when:
+        status_in: [200]
+        json_path: merged
+        equals: true
+      result: landed
+    - when:
+        status_in: [200]
+        json_path: merged
+        equals: false
+      result: not_landed
+    - when:
+        status_in: [404, 500, 502, 503]
+      result: unknown
+
+reversibility:
+  class: irreversible
+
+compensation:
+  kind: none
+  notes: >
+    A merge commit is part of history and cannot be truly reversed. The only recourse
+    is a revert, which is a new forward commit rather than an undo, so it is out of
+    scope for a compensation and is left to the caller.
+
+notes: >
+  The merged field is authoritative. A pull request can look finished because its
+  branch was deleted, yet merged is false, meaning the change never landed. Trusting
+  branch state instead of the merged field is the trap this capsule removes.
+source: https://docs.github.com/en/rest/pulls/pulls#get-a-pull-request

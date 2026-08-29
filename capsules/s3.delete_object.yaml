@@ -1,0 +1,54 @@
+id: s3.delete_object
+provider: aws_s3
+operation: delete_object
+schema_version: "1"
+summary: >
+  Delete an object from an S3 bucket. Answer whether the object is gone, and restore
+  it only when bucket versioning kept the prior version.
+
+idempotency:
+  strategy: none
+  notes: >
+    Deleting an object is naturally idempotent. Repeating the delete against a
+    missing key still returns success, so no idempotency key is needed.
+
+probe:
+  kind: http
+  request:
+    method: HEAD
+    path: /{bucket}/{key}
+  interpret:
+    - when:
+        status_in: [404]
+      result: landed
+    - when:
+        status_in: [200]
+      result: not_landed
+    - when:
+        status_in: [500, 503]
+      result: unknown
+
+reversibility:
+  class: conditionally_reversible
+  condition: >
+    Bucket versioning was enabled at delete time, so the delete wrote a delete
+    marker and retained the previous version. Without versioning the object is gone
+    for good.
+
+compensation:
+  kind: http
+  request:
+    method: DELETE
+    path: /{bucket}/{key}
+    query:
+      versionId: "{delete_marker_version_id}"
+  notes: >
+    Restore by deleting the delete marker, which makes the most recent prior version
+    current again. This needs the delete marker version id returned in the original
+    delete response as x-amz-version-id, so capture it at delete time.
+
+notes: >
+  The probe reports whether the object currently resolves. On a versioned bucket a
+  landed delete still leaves the data recoverable, which is why reversibility is
+  conditional rather than outright.
+source: https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeleteMarker.html

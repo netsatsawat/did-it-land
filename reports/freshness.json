@@ -1,0 +1,22 @@
+{
+  "generated": "2026-08-30",
+  "note": "tier1_offline is the local no-keys contract test; last_verified_live is set by the weekly drift job (drift.yml).",
+  "capsules": {
+    "github.merge_pr": {
+      "tier1_offline": true,
+      "last_verified_live": null
+    },
+    "postgres.insert": {
+      "tier1_offline": true,
+      "last_verified_live": null
+    },
+    "s3.delete_object": {
+      "tier1_offline": true,
+      "last_verified_live": null
+    },
+    "stripe.charge": {
+      "tier1_offline": true,
+      "last_verified_live": null
+    }
+  }
+}
