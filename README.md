@@ -170,6 +170,31 @@ and the honest move is to leave them out rather than ship an answer that arrives
 late. The file format is documented in
 [docs/CAPSULE-SCHEMA.md](https://github.com/netsatsawat/did-it-land/blob/main/docs/CAPSULE-SCHEMA.md).
 
+## 🧰 When you need this
+
+The pattern fits any job that both touches an outside system and can die halfway.
+Five common shapes:
+
+**Taking payments.** The classic. A checkout flow charges the card and then saves the
+order. Any crash between the two risks a double charge, and any cancellation needs a
+refund that itself cannot fire twice.
+
+**Agents that act.** An AI agent that books, sends, buys, or files tickets is a series
+of steps with real-world effects. When its runtime restarts it, the agent must know
+which actions already happened, or it repeats them. This is the enterprise agent
+problem the architecture picture above places.
+
+**Cleanup jobs and data pipelines.** A nightly job deletes old files and inserts
+summary rows. Rerun it blindly after a crash and you get duplicate rows, or you delete
+things twice and lose the ability to restore. Asking first makes reruns boring.
+
+**Release and repo automation.** A bot that merges pull requests must trust the merged
+flag, not the branch, because a deleted branch looks exactly like a finished merge.
+
+**Cancelling multi-step work.** An order fails at step four of five. The three
+completed steps each need their undo, run in reverse order, and each undo needs the
+same protection against running twice. That is what `Saga` and `unwind` are for.
+
 ## 🔌 Using it with DBOS
 
 DBOS is one of the engines that restarts crashed work from the last saved step. Wrap a step in `guard` and the rerun asks before it acts. It skips work that already
