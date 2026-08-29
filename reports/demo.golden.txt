@@ -1,14 +1,24 @@
 === did-it-land demo: did my charge land? ===
-A durable worker charges a customer, then crashes before recording the result.
+A worker charges a customer, then crashes before recording the result.
+The recovery has three possible answers. This stages every one of them.
 
-Run A, naive recovery
+Run A, naive recovery, no check at all
   attempt 1 : charged, then the worker crashed before the checkpoint
   recovery  : the idempotency key was lost, so the retry uses a new key
   result    : 2 charges for ORD-1, the customer is double charged
 
-Run B, recovery with did-it-land
-  attempt 1 : charged, then the worker crashed before the checkpoint
+Run B, answer: landed. The charge made it out before the crash.
   recovery  : reconcile(stripe.charge, order_id=ORD-1) -> landed
-  result    : 1 charge for ORD-1, reconciled, no double charge
+  result    : 1 charge for ORD-1, retry skipped, no double charge
+
+Run C, answer: not landed. The crash hit before the request left.
+  recovery  : reconcile(stripe.charge, order_id=ORD-1) -> not_landed
+  result    : safe to run, 1 charge for ORD-1, exactly once
+
+Run D, answer: unknown. The service is down when recovery asks.
+  recovery  : reconcile(stripe.charge, order_id=ORD-1) -> unknown
+  decision  : refuse to act on a guess, wait for the service
+  re-probe  : service is back -> landed, retry skipped
+  result    : 1 charge for ORD-1, still exactly one
 
 Unwind      : unwind(stripe.charge, pi_0001) -> compensated (refund issued)

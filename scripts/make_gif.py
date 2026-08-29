@@ -44,8 +44,12 @@ def color_for(line):
         return BAD
     if "no double charge" in line:
         return GOOD
-    if "-> landed" in line:
+    if "-> landed" in line or "-> not_landed" in line or line.lstrip().startswith("re-probe"):
         return BLUE
+    if "-> unknown" in line or line.lstrip().startswith("decision"):
+        return AMBER
+    if "exactly on" in line:
+        return GOOD
     if line.startswith("Unwind"):
         return AMBER
     if line.startswith("==="):

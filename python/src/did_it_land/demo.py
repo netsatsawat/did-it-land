@@ -22,14 +22,18 @@ from .transport import Response
 
 @dataclass
 class FakeStripe:
-    """Just enough Stripe to run the demo: create with idempotency, search, refund."""
+    """Just enough Stripe to run the demo: create with idempotency, search, refund,
+    and an outage switch so the demo can stage an unknown answer."""
 
     _by_key: dict[str, dict] = field(default_factory=dict)
     _by_order: dict[str, list[dict]] = field(default_factory=dict)
     _seq: int = 0
+    outage: bool = False
 
     def send(self, request: Request) -> Response:
         path, method = request.path, request.method
+        if self.outage:
+            return Response(503, {"error": "service unavailable"})
         if method == "POST" and path == "/v1/payment_intents":
             return self._create(request)
         if method == "GET" and path == "/v1/payment_intents/search":
@@ -94,14 +98,15 @@ def run_demo() -> dict:
         print(line)
 
     say("=== did-it-land demo: did my charge land? ===")
-    say("A durable worker charges a customer, then crashes before recording the result.")
+    say("A worker charges a customer, then crashes before recording the result.")
+    say("The recovery has three possible answers. This stages every one of them.")
     say("")
 
     # Run A: naive recovery. The idempotency key was lost in the crash, so the retry
     # mints a fresh key and charges again.
     naive = FakeStripe()
     _charge(naive, order_id, idem_key="attempt-1-key")
-    say("Run A, naive recovery")
+    say("Run A, naive recovery, no check at all")
     say("  attempt 1 : charged, then the worker crashed before the checkpoint")
     say("  recovery  : the idempotency key was lost, so the retry uses a new key")
     _charge(naive, order_id, idem_key="recovery-fresh-key")
@@ -109,20 +114,48 @@ def run_demo() -> dict:
     say(f"  result    : {naive_count} charges for {order_id}, the customer is double charged")
     say("")
 
-    # Run B: recovery with did_it_land. Probe by the order id, which the workflow owns.
+    # Run B: the charge went through before the crash. The probe finds it, so the
+    # retry is skipped.
     fixed = FakeStripe()
     _charge(fixed, order_id, idem_key="attempt-1-key")
-    say("Run B, recovery with did-it-land")
-    say("  attempt 1 : charged, then the worker crashed before the checkpoint")
-    outcome = reconcile(capsule, {"order_id": order_id}, transport=fixed)
-    say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {outcome.status}")
-    if not outcome.landed:
+    say("Run B, answer: landed. The charge made it out before the crash.")
+    landed = reconcile(capsule, {"order_id": order_id}, transport=fixed)
+    say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {landed.status}")
+    if not landed.landed:
         _charge(fixed, order_id, idem_key="recovery-fresh-key")
     fixed_count = len(fixed.charges_for(order_id))
-    say(f"  result    : {fixed_count} charge for {order_id}, reconciled, no double charge")
+    say(f"  result    : {fixed_count} charge for {order_id}, retry skipped, no double charge")
     say("")
 
-    # And reversing it is one call.
+    # Run C: the crash hit before the request ever left. The probe finds nothing,
+    # so running the step now is safe.
+    empty = FakeStripe()
+    say("Run C, answer: not landed. The crash hit before the request left.")
+    absent = reconcile(capsule, {"order_id": order_id}, transport=empty)
+    say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {absent.status}")
+    if absent.not_landed:
+        _charge(empty, order_id, idem_key="derived-from-order-key")
+    empty_count = len(empty.charges_for(order_id))
+    say(f"  result    : safe to run, {empty_count} charge for {order_id}, exactly once")
+    say("")
+
+    # Run D: the service is down, so the answer is unknown. The honest move is to
+    # refuse, wait, and ask again once the service is back.
+    downed = FakeStripe()
+    _charge(downed, order_id, idem_key="attempt-1-key")
+    downed.outage = True
+    say("Run D, answer: unknown. The service is down when recovery asks.")
+    unknown = reconcile(capsule, {"order_id": order_id}, transport=downed)
+    say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {unknown.status}")
+    say("  decision  : refuse to act on a guess, wait for the service")
+    downed.outage = False
+    retried = reconcile(capsule, {"order_id": order_id}, transport=downed)
+    say(f"  re-probe  : service is back -> {retried.status}, retry skipped")
+    downed_count = len(downed.charges_for(order_id))
+    say(f"  result    : {downed_count} charge for {order_id}, still exactly one")
+    say("")
+
+    # And reversing a landed charge is one call.
     pi_id = fixed.charges_for(order_id)[0]["id"]
     comp = unwind(capsule, {"payment_intent_id": pi_id}, transport=fixed)
     say(f"Unwind      : unwind(stripe.charge, {pi_id}) -> {comp.status} (refund issued)")
@@ -130,6 +163,11 @@ def run_demo() -> dict:
     return {
         "naive_charges": naive_count,
         "did_it_land_charges": fixed_count,
-        "reconcile_status": outcome.status,
+        "not_landed_charges": empty_count,
+        "unknown_then_charges": downed_count,
+        "reconcile_status": landed.status,
+        "not_landed_status": absent.status,
+        "unknown_status": unknown.status,
+        "reprobe_status": retried.status,
         "unwind_status": comp.status,
         "lines": out}
