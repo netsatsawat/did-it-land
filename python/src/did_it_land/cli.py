@@ -39,7 +39,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
             reg = load_dir(args.path)
         else:
             reg = bundled()
-    except (CapsuleError, EffectError, TypeError, yaml.YAMLError, OSError) as exc:
+    except (CapsuleError, EffectError, TypeError, ValueError, yaml.YAMLError, OSError) as exc:
         first = str(exc).strip().splitlines()[0]
         print(f"invalid: {first}", flush=True)
         return 1

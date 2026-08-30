@@ -8,8 +8,13 @@ import { bundled, reconcile, unwind } from "did-it-land";
 
 const charge = bundled().get("stripe.charge");
 
-// After an ambiguous crash: did it land?
-const outcome = await reconcile(charge, { order_id: "ORD-1" }, stripeTransport);
+// After an ambiguous crash: did it land? created_after is a unix-seconds
+// timestamp your workflow records when the order begins.
+const outcome = await reconcile(
+  charge,
+  { order_id: "ORD-1", created_after: orderStartedAt },
+  stripeTransport,
+);
 if (outcome.status === "landed") {
   // the charge already happened, skip the retry
 }

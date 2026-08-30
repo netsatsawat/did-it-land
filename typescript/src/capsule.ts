@@ -75,6 +75,8 @@ export interface Capsule {
   source?: string | string[];
 }
 
+export const SCHEMA_VERSION = "1";
+
 export class CapsuleError extends Error {}
 
 const METHODS = new Set(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]);
@@ -125,6 +127,14 @@ function strMap(value: unknown): Record<string, string> {
     out[k] = String(v);
   }
   return out;
+}
+
+function keysList(raw: unknown, where: string): string[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw) || raw.some((x) => typeof x !== "string")) {
+    throw new CapsuleError(`${where}: expected a list of strings`);
+  }
+  return raw as string[];
 }
 
 function requestFrom(value: unknown, where: string): HttpRequest {
@@ -239,7 +249,7 @@ export function capsuleFromDoc(value: unknown, where = "capsule"): Capsule {
       `${where}.idempotency.strategy`,
     ) as Strategy,
     header: idemDoc.header as string | undefined,
-    keys: (idemDoc.keys as string[] | undefined) ?? [],
+    keys: keysList(idemDoc.keys, `${where}.idempotency.keys`),
     notes: idemDoc.notes as string | undefined,
   };
 
@@ -255,6 +265,13 @@ export function capsuleFromDoc(value: unknown, where = "capsule"): Capsule {
   if (cls === "conditionally_reversible" && !condition) {
     throw new CapsuleError(
       `${where}.reversibility: a conditionally_reversible capsule must state its condition`,
+    );
+  }
+
+  const version = String(require_(doc, "schema_version", where));
+  if (version !== SCHEMA_VERSION) {
+    throw new CapsuleError(
+      `${where}: schema_version ${version} is not supported, this runtime reads version ${SCHEMA_VERSION}`,
     );
   }
 

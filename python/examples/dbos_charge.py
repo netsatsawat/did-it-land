@@ -44,7 +44,7 @@ def main() -> int:
     stripe = _stripe()
 
     @DBOS.step()
-    def charge_customer(order_id: str) -> str:
+    def charge_customer(order_id: str, started_at: str) -> str:
         # On recovery an incomplete step re-runs, so guard probes first and only
         # charges if the charge has not already landed, keyed on the order id the
         # workflow always has. Two contracts make the probe able to see your
@@ -55,9 +55,7 @@ def main() -> int:
             # your real Stripe create call goes here; return the payment intent id
             raise NotImplementedError("wire up your Stripe create call")
 
-        context = {
-            "order_id": order_id,
-            "created_after": str(int(time.time()) - 3600)}
+        context = {"order_id": order_id, "created_after": started_at}
         result = guard(charge, context, stripe, do_charge)
         # The undo template needs the payment intent id, so return THAT, never the
         # order id. A landed probe already carries the id in its evidence.
@@ -66,14 +64,14 @@ def main() -> int:
         return str(result)
 
     @DBOS.workflow()
-    def fulfil(order_id: str) -> str:
+    def fulfil(order_id: str, started_at: str) -> str:
         # The Saga lives in the WORKFLOW body, one per invocation, and record()
         # runs here with the step's return value. Engines skip completed steps on
         # recovery, so a record() inside the step would never replay and the
         # journal would be empty exactly when compensation matters.
         saga = Saga()
         try:
-            pi_id = charge_customer(order_id)
+            pi_id = charge_customer(order_id, started_at)
             saga.record(charge, {"payment_intent_id": pi_id}, stripe)
             return pi_id
         except Exception:
@@ -81,7 +79,9 @@ def main() -> int:
             raise
 
     DBOS.launch()
-    print(fulfil("ORD-1"))
+    # Record the order's start before any work begins: recovery re-binds this
+    # exact value, so the capsule's window always reaches back to the order.
+    print(fulfil("ORD-1", str(int(time.time()))))
     return 0
 
 
