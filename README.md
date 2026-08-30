@@ -111,6 +111,7 @@ from did_it_land import bundled, reconcile, unwind, HttpxTransport
 stripe = HttpxTransport("https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
 charge = bundled().get("stripe.charge")
 
+key = "sk_test_..."                # your Stripe test-mode key
 order_started_at = "1700000000"    # unix seconds, recorded when the order began
 context = {"order_id": "ORD-1", "created_after": order_started_at}
 outcome = reconcile(charge, context, transport=stripe)
@@ -234,8 +235,8 @@ asks the real services, in their test environments, whether they still behave th
 a capsule says, running its full question-and-confirm logic rather than pinging one
 URL, and writes the date of the last successful check into
 [reports/freshness.json](https://github.com/netsatsawat/did-it-land/blob/main/reports/freshness.json).
-And the build recomputes every number in this page from the project's own files,
-failing when one drifts. Two honest notes while this is new: the weekly job ships with this repo but has not
+And the build recomputes this page's capsule count and names from the project's own
+files, failing when they drift. Two honest notes while this is new: the weekly job ships with this repo but has not
 accumulated history yet, and the freshness file says so plainly with a null date until
 each capsule's first green run. And the live harness covers `stripe.charge` today,
 with the other three capsules verified offline until their sandbox checks land.

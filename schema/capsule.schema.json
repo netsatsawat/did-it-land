@@ -14,7 +14,7 @@
     },
     "provider": { "type": "string", "minLength": 1 },
     "operation": { "type": "string", "minLength": 1 },
-    "schema_version": { "type": "string", "minLength": 1 },
+    "schema_version": { "const": "1", "description": "the capsule format version this schema and both runtimes read" },
     "summary": { "type": "string" },
     "idempotency": {
       "type": "object",

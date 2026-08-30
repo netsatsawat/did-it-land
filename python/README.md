@@ -19,6 +19,7 @@ from did_it_land import bundled, reconcile, unwind, HttpxTransport
 stripe = HttpxTransport("https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
 charge = bundled().get("stripe.charge")
 
+key = "sk_test_..."                # your Stripe test-mode key
 order_started_at = "1700000000"    # unix seconds, recorded when the order began
 context = {"order_id": "ORD-1", "created_after": order_started_at}
 outcome = reconcile(charge, context, transport=stripe)
