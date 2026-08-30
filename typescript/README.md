@@ -22,6 +22,10 @@ if (outcome.status === "landed") {
 await unwind(charge, { payment_intent_id: "pi_123" }, stripeTransport);
 ```
 
+`stripeTransport` is yours to supply: any object with an async `send(request)`
+returning `{ statusCode, body }` and throwing `TransportError` on timeouts, as shown
+in the quick start's fetch example.
+
 v1 ships four capsules: `stripe.charge`, `s3.delete_object`, `github.merge_pr`, and
 `postgres.insert`. Same corpus as the Python package, with one caveat: the native
 `postgres.insert` capsule needs a handler you register with `registerNative()`, since

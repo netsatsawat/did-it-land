@@ -1,10 +1,4 @@
-"""The did-it-land command line.
-
-    did-it-land list              show the bundled capsules
-    did-it-land validate [DIR]    validate a corpus (defaults to the bundled one)
-    did-it-land demo              run the no-keys crash-and-reconcile demo
-    did-it-land schema            print the schema version
-"""
+"""The did-it-land command line: list, validate, demo, and schema subcommands."""
 
 from __future__ import annotations
 
@@ -33,6 +27,9 @@ def _cmd_list(_args: argparse.Namespace) -> int:
 
 def _cmd_validate(args: argparse.Namespace) -> int:
     try:
+        if args.path and not Path(args.path).exists():
+            print(f"invalid: no such file or directory: {args.path}", flush=True)
+            return 1
         if args.path and Path(args.path).is_file():
             reg = Registry([load_capsule(args.path)])
         elif args.path:

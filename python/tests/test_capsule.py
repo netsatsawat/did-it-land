@@ -90,6 +90,20 @@ class TestCapsuleValidation(unittest.TestCase):
                 capsule_from_dict(doc)
             self.assertIn(needle, str(raised.exception), msg=needle)
 
+    def test_keys_must_be_a_list_of_strings(self):
+        doc = good_doc()
+        doc["idempotency"] = {"strategy": "natural_key", "keys": [1, 2]}
+        with self.assertRaises(CapsuleError) as raised:
+            capsule_from_dict(doc)
+        self.assertIn("list of strings", str(raised.exception))
+
+    def test_where_must_be_a_mapping(self):
+        doc = good_doc()
+        doc["probe"]["interpret"][0]["when"]["where"] = ["not-a-map"]
+        with self.assertRaises(CapsuleError) as raised:
+            capsule_from_dict(doc)
+        self.assertIn("where", str(raised.exception))
+
     def test_unsupported_schema_version_is_refused(self):
         doc = good_doc()
         doc["schema_version"] = "99"
