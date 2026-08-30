@@ -78,16 +78,29 @@ class TestGuard(unittest.TestCase):
 class TestSaga(unittest.TestCase):
     def test_recording_the_wrong_context_key_fails_loudly(self):
         # The compensation template binds {payment_intent_id}. Recording only the
-        # order id, the mistake our own example once shipped, must raise at
-        # compensate time, never silently skip the refund.
-        from did_it_land.reconcile import EffectError
-
+        # order id, the mistake our own example once shipped, must surface as a
+        # loud error result at compensate time, never as a silently skipped
+        # refund.
         capsule = bundled().get("stripe.charge")
         saga = Saga()
         saga.record(capsule, {"order_id": "ORD-1"}, OneRoute(Response(200, {})))
-        with self.assertRaises(EffectError) as raised:
-            saga.compensate()
-        self.assertIn("payment_intent_id", str(raised.exception))
+        results = saga.compensate()
+        self.assertEqual([r.status for r in results], ["error"])
+        self.assertIn("payment_intent_id", results[0].evidence["error"])
+
+    def test_one_bad_step_does_not_strand_the_rest(self):
+        # The second-recorded effect has a broken context. Its unwind raises,
+        # is captured as an error result, and the first effect still gets its
+        # refund.
+        capsule = bundled().get("stripe.charge")
+        transport = OneRoute(Response(200, {"id": "re_ok"}))
+        saga = Saga()
+        saga.record(capsule, {"payment_intent_id": "pi_good"}, transport)
+        saga.record(capsule, {"order_id": "wrong-key"}, transport)
+        results = saga.compensate()
+        self.assertEqual([r.status for r in results], ["error", "compensated"])
+        self.assertIn("payment_intent_id", results[0].evidence["error"])
+        self.assertEqual(transport.seen[0].query["payment_intent"], "pi_good")
 
     def test_compensate_walks_in_reverse(self):
         capsule = bundled().get("stripe.charge")

@@ -41,6 +41,27 @@ probe:
       result: unknown
     - when:
         status_in: [200]
+        json_path: data
+        where:
+          status: requires_action
+        count_gte: 1
+      result: unknown
+    - when:
+        status_in: [200]
+        json_path: data
+        where:
+          status: requires_confirmation
+        count_gte: 1
+      result: unknown
+    - when:
+        status_in: [200]
+        json_path: data
+        where:
+          status: requires_capture
+        count_gte: 1
+      result: unknown
+    - when:
+        status_in: [200]
       result: not_landed
     - when:
         status_in: [429, 500, 502, 503]
@@ -67,6 +88,35 @@ probe:
             metadata.order_id: "{order_id}"
             status: processing
           count_gte: 1
+        result: unknown
+      - when:
+          status_in: [200]
+          json_path: data
+          where:
+            metadata.order_id: "{order_id}"
+            status: requires_action
+          count_gte: 1
+        result: unknown
+      - when:
+          status_in: [200]
+          json_path: data
+          where:
+            metadata.order_id: "{order_id}"
+            status: requires_confirmation
+          count_gte: 1
+        result: unknown
+      - when:
+          status_in: [200]
+          json_path: data
+          where:
+            metadata.order_id: "{order_id}"
+            status: requires_capture
+          count_gte: 1
+        result: unknown
+      - when:
+          status_in: [200]
+          json_path: has_more
+          equals: true
         result: unknown
       - when:
           status_in: [200]
@@ -101,6 +151,10 @@ compensation:
     twice either. A refund reverses the money movement but Stripe keeps the
     original processing fees, and on some asynchronous payment methods a refund
     can fail after being accepted, so treat compensated as accepted, not settled.
+    One more Stripe behavior to know: the key pins the FIRST response for about
+    24 hours, a failure included. A refund that failed for a fixable reason will
+    replay that same failure on retry under this key, so a deliberate second
+    attempt after fixing the cause needs a fresh key of your own choosing.
 
 notes: >
   The probe asks a sharper question than "does a payment intent exist". It filters

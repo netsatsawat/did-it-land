@@ -33,8 +33,9 @@ from did_it_land import bundled, reconcile, unwind, HttpxTransport
 capsule = bundled().get("stripe.charge")
 ```
 
-A capsule holds the knowledge. A transport carries the question to the service. You
-configure the transport once with the service's address and your credentials:
+A capsule holds the knowledge. A transport carries the question to the service. The
+built-in one needs the http extra, one install flag: `pip install "did-it-land[http]"`.
+Configure it once with the service's address and your credentials:
 
 ```python
 stripe = HttpxTransport(
@@ -64,18 +65,23 @@ Three answers, always. `evidence` carries what the probe saw, including a `match
 count when more than one charge exists for the same order, which means you already
 have a duplicate to refund.
 
-One caveat to respect: Stripe's search can lag a few moments behind a brand-new
-charge. An empty answer right after a crash deserves a second look before you act.
+Stripe's search can lag a few moments behind a brand-new charge, and the capsule
+handles that for you: on an empty search answer it automatically asks Stripe's List
+API, which does not lag, and only then answers not landed, stamping `confirmed: True`
+into the evidence. The one residual gap is a burst of more than a hundred new payment
+intents between crash and recovery, in which case the answer is unknown rather than a
+guess.
 
 ## 4. Undo it
 
 ```python
 result = unwind(capsule, {"payment_intent_id": "pi_..."}, transport=stripe)
-print(result.status)     # compensated, or unknown if the service did not answer
+print(result.status)     # compensated, failed, or unknown if it did not answer
 ```
 
 The refund request carries its own idempotency key, derived from the payment intent
-id. Running `unwind` twice with the same context cannot refund twice.
+id. Running `unwind` twice with the same context cannot refund twice. Retry it
+freely.
 
 ## 5. Protect a worker, no engine required
 
@@ -98,6 +104,12 @@ def handle(order_id: str):
 `guard` skips the call when the charge already exists, runs it when it provably does
 not, and raises `UnknownOutcome` when the service will not say, after the bounded
 patience you gave it. Catch that exception and let your queue redeliver later.
+
+Two things in your own create call make the probe able to see the charge at all.
+Attach the order id as metadata, `metadata={"order_id": order_id}`, because that is
+what both probes search by, and a charge created without it is invisible to recovery.
+And derive the Stripe `Idempotency-Key` from the same order id, for example
+`f"charge-{order_id}"`, never from a value minted inside the step.
 
 If you do run DBOS, the wiring inside a workflow is in
 [python/examples/dbos_charge.py](../python/examples/dbos_charge.py).
@@ -136,10 +148,12 @@ const outcome = await reconcile(capsule, { order_id: "QS-1" }, stripe);
 
 ## 7. Where to go next
 
-The other three capsules work the same way with different context fields: bucket and
+The other three capsules work the same way in Python with different context fields: bucket and
 key for `s3.delete_object`, owner, repo, and pull number for `github.merge_pr`, and a
 table, key column, and key value plus a database connection for `postgres.insert`.
-`did-it-land list` shows them, and each YAML file under
+One TypeScript exception: `postgres.insert` is a native capsule and the TS runtime
+ships no built-in database handlers, so it needs a handler you register with
+`registerNative()` first. `did-it-land list` shows them, and each YAML file under
 [capsules/](../capsules/) documents its fields and cites its sources. The format
 itself is specified in [CAPSULE-SCHEMA.md](CAPSULE-SCHEMA.md), and adding a capsule
 for your own service is covered in [CONTRIBUTING.md](../CONTRIBUTING.md).

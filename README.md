@@ -93,7 +93,7 @@ probe:                  # how to ask: did the charge go through?
 compensation:           # how to undo it: send a refund
   request: POST /v1/refunds
 reversibility: refundable, though Stripe keeps its processing fees
-source: five links to Stripe's own documentation
+source: six links to Stripe's own documentation
 ```
 
 The full file is
@@ -102,7 +102,8 @@ and every claim in it links to the page in Stripe's documentation that backs it 
 Those files are the real product. The code around them is small on purpose, and the same
 files drive both the Python and the TypeScript versions, so the two can never disagree.
 
-In your own code, the whole thing is two calls. One asks, one undoes:
+In your own code, the whole thing is two calls. One asks, one undoes. The built-in
+transport needs one extra: `pip install "did-it-land[http]"`.
 
 ```python
 from did_it_land import bundled, reconcile, unwind, HttpxTransport

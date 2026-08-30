@@ -42,10 +42,52 @@ and a path template whose `{name}` placeholders bind from the call context, plus
 matches decides the result. A `native` probe names a `handler` that each language runtime
 resolves to a small function, for operations that speak a driver protocol rather than HTTP.
 
-A rule matches on any of `status_in` (a list of HTTP status codes), `json_path` with
-`exists`, `equals`, or `count_gte` against the response body. If no rule matches, the
-result is `unknown`. Prefer capsules whose answer is definite. An operation that can only
-ever return `unknown` in the window that matters does not belong in the corpus.
+A rule has exactly two keys: its conditions nest under `when`, and `result` sits beside
+it. Conditions are `status_in` (a list of HTTP status codes) and `json_path` combined
+with `exists`, `equals`, or `count_gte` against the response body. When the `json_path`
+target is an array, an optional `where` map filters its elements first: each key is a
+field name, dotted paths like `metadata.order_id` reach into nested objects, and a
+string value may carry a `{name}` placeholder bound from the call context. Elements
+that survive the filter are what `count_gte` counts, and their ids surface in the
+outcome's evidence. Unknown keys are rejected, in the JSON schema and the runtime both,
+because a typo that silently vanished would leave a rule with no conditions, and a rule
+with no conditions matches everything.
+
+A probe may also declare `confirm`, a second request-and-interpret pair asked only when
+the primary rules answer `not_landed`. Some services answer their fast search from an
+index that trails the truth, and "it never happened" from a lagging index is how double
+charges get approved. The confirm is the lag-free second question, its verdict wins,
+and it stamps `confirmed: true` into the evidence. All three features together, in the
+shape the Stripe capsule uses:
+
+```yaml
+interpret:
+  - when:
+      status_in: [200]
+      json_path: data
+      where:
+        metadata.order_id: "{order_id}"
+        status: succeeded
+      count_gte: 1
+    result: landed
+  - when:
+      status_in: [200]
+    result: not_landed
+confirm:
+  request:
+    method: GET
+    path: /v1/payment_intents
+    query: {limit: "100"}
+  interpret:
+    - when: {status_in: [200], json_path: has_more, equals: true}
+      result: unknown
+    - when: {status_in: [200]}
+      result: not_landed
+```
+
+If no rule matches, the result is `unknown`. Prefer capsules whose answer is definite.
+An operation that can only ever return `unknown` in the window that matters does not
+belong in the corpus.
 
 ## reversibility
 

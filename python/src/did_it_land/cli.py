@@ -11,9 +11,14 @@ from __future__ import annotations
 import argparse
 import sys
 
+from pathlib import Path
+
+import yaml
+
 from . import __version__
-from .capsule import SCHEMA_VERSION, CapsuleError
-from .registry import bundled, load_dir
+from .capsule import SCHEMA_VERSION, CapsuleError, load_capsule
+from .reconcile import EffectError
+from .registry import Registry, bundled, load_dir
 
 
 def _cmd_list(_args: argparse.Namespace) -> int:
@@ -28,9 +33,15 @@ def _cmd_list(_args: argparse.Namespace) -> int:
 
 def _cmd_validate(args: argparse.Namespace) -> int:
     try:
-        reg = load_dir(args.dir) if args.dir else bundled()
-    except CapsuleError as exc:
-        print(f"invalid: {exc}", flush=True)
+        if args.path and Path(args.path).is_file():
+            reg = Registry([load_capsule(args.path)])
+        elif args.path:
+            reg = load_dir(args.path)
+        else:
+            reg = bundled()
+    except (CapsuleError, EffectError, yaml.YAMLError, OSError) as exc:
+        first = str(exc).strip().splitlines()[0]
+        print(f"invalid: {first}", flush=True)
         return 1
     print(f"valid: {len(reg)} capsules ({', '.join(reg.ids())})")
     return 0
@@ -61,8 +72,10 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("list", help="show the bundled capsules").set_defaults(func=_cmd_list)
 
-    p_val = sub.add_parser("validate", help="validate a corpus directory")
-    p_val.add_argument("dir", nargs="?", help="corpus directory (default: bundled)")
+    p_val = sub.add_parser(
+        "validate", help="validate a capsule file or a corpus directory")
+    p_val.add_argument(
+        "path", nargs="?", help="a .yaml capsule or a directory (default: bundled)")
     p_val.set_defaults(func=_cmd_validate)
 
     sub.add_parser("demo", help="run the no-keys demo").set_defaults(func=_cmd_demo)

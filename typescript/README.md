@@ -18,7 +18,9 @@ await unwind(charge, { payment_intent_id: "pi_123" }, stripeTransport);
 ```
 
 v1 ships four capsules: `stripe.charge`, `s3.delete_object`, `github.merge_pr`, and
-`postgres.insert`. Same corpus as the Python package. Full docs in the repository.
+`postgres.insert`. Same corpus as the Python package, with one caveat: the native
+`postgres.insert` capsule needs a handler you register with `registerNative()`, since
+the TS runtime ships no built-in database handlers. Full docs in the repository.
 
 Homepage and docs: https://github.com/netsatsawat/did-it-land
 

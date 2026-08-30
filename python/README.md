@@ -9,7 +9,7 @@ compensation. did-it-land ships that knowledge as a small corpus of effect capsu
 thin runtime.
 
 ```
-pip install did-it-land
+pip install "did-it-land[http]"
 did-it-land demo
 ```
 

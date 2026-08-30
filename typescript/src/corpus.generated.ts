@@ -209,6 +209,45 @@ export const CORPUS: unknown[] = [
           "when": {
             "status_in": [
               200
+            ],
+            "json_path": "data",
+            "where": {
+              "status": "requires_action"
+            },
+            "count_gte": 1
+          },
+          "result": "unknown"
+        },
+        {
+          "when": {
+            "status_in": [
+              200
+            ],
+            "json_path": "data",
+            "where": {
+              "status": "requires_confirmation"
+            },
+            "count_gte": 1
+          },
+          "result": "unknown"
+        },
+        {
+          "when": {
+            "status_in": [
+              200
+            ],
+            "json_path": "data",
+            "where": {
+              "status": "requires_capture"
+            },
+            "count_gte": 1
+          },
+          "result": "unknown"
+        },
+        {
+          "when": {
+            "status_in": [
+              200
             ]
           },
           "result": "not_landed"
@@ -266,6 +305,58 @@ export const CORPUS: unknown[] = [
             "when": {
               "status_in": [
                 200
+              ],
+              "json_path": "data",
+              "where": {
+                "metadata.order_id": "{order_id}",
+                "status": "requires_action"
+              },
+              "count_gte": 1
+            },
+            "result": "unknown"
+          },
+          {
+            "when": {
+              "status_in": [
+                200
+              ],
+              "json_path": "data",
+              "where": {
+                "metadata.order_id": "{order_id}",
+                "status": "requires_confirmation"
+              },
+              "count_gte": 1
+            },
+            "result": "unknown"
+          },
+          {
+            "when": {
+              "status_in": [
+                200
+              ],
+              "json_path": "data",
+              "where": {
+                "metadata.order_id": "{order_id}",
+                "status": "requires_capture"
+              },
+              "count_gte": 1
+            },
+            "result": "unknown"
+          },
+          {
+            "when": {
+              "status_in": [
+                200
+              ],
+              "json_path": "has_more",
+              "equals": true
+            },
+            "result": "unknown"
+          },
+          {
+            "when": {
+              "status_in": [
+                200
               ]
             },
             "result": "not_landed"
@@ -300,7 +391,7 @@ export const CORPUS: unknown[] = [
           "Idempotency-Key": "did-it-land-refund-{payment_intent_id}"
         }
       },
-      "notes": "Refund the payment intent found by the probe, with its own idempotency key derived from the payment intent id, so a crashed compensation cannot refund twice either. A refund reverses the money movement but Stripe keeps the original processing fees, and on some asynchronous payment methods a refund can fail after being accepted, so treat compensated as accepted, not settled.\n"
+      "notes": "Refund the payment intent found by the probe, with its own idempotency key derived from the payment intent id, so a crashed compensation cannot refund twice either. A refund reverses the money movement but Stripe keeps the original processing fees, and on some asynchronous payment methods a refund can fail after being accepted, so treat compensated as accepted, not settled. One more Stripe behavior to know: the key pins the FIRST response for about 24 hours, a failure included. A refund that failed for a fixable reason will replay that same failure on retry under this key, so a deliberate second attempt after fixing the cause needs a fresh key of your own choosing.\n"
     },
     "notes": "The probe asks a sharper question than \"does a payment intent exist\". It filters the search results by status, because an intent stuck at requires_payment_method is a declined card, not a landed charge, and one in processing is money in flight, which is honestly unknown. A matched count above one means a duplicate already exists and one intent needs refunding; the count is surfaced in the outcome's evidence. Two consistency caveats from Stripe's own documentation: search is not for read-after-write flows, since new records can take a short while to become searchable, so an empty result immediately after a crash should be re-checked after a delay (the List API is not subject to that lag and can serve as the fallback); and status filtered in the query text can be served from a cache, which is why the filtering here happens client-side against the returned objects.\n",
     "source": [
