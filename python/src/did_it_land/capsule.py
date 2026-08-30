@@ -126,6 +126,14 @@ def _one_of(value: object, allowed: set[str], where: str) -> str:
     return str(value)
 
 
+def _keys_list(raw: object, where: str) -> list[str]:
+    if raw is None:
+        return []
+    if not isinstance(raw, list) or any(not isinstance(x, str) for x in raw):
+        raise CapsuleError(f"{where}: expected a list of strings")
+    return list(raw)
+
+
 def _request_from(doc: dict, where: str) -> Request:
     _no_extras(doc, {"method", "path", "query", "headers"}, where)
     method = _one_of(str(_require(doc, "method", where)).upper(), _METHODS, f"{where}.method")
@@ -143,6 +151,17 @@ def _rule_from(doc: dict, where: str) -> Rule:
         when,
         {"status_in", "json_path", "exists", "equals", "count_gte", "where"},
         f"{where}.when")
+    if "status_in" in when:
+        raw = when["status_in"]
+        if not isinstance(raw, list) or any(not isinstance(x, int) or isinstance(x, bool) for x in raw):
+            raise CapsuleError(f"{where}.when.status_in: expected a list of numbers")
+    if "count_gte" in when and (
+            not isinstance(when["count_gte"], int) or isinstance(when["count_gte"], bool)):
+        raise CapsuleError(f"{where}.when.count_gte: expected a number")
+    if "exists" in when and not isinstance(when["exists"], bool):
+        raise CapsuleError(f"{where}.when.exists: expected a boolean")
+    if "where" in when and not isinstance(when["where"], dict):
+        raise CapsuleError(f"{where}.when.where: expected a mapping")
     return Rule(
         result=_one_of(_require(doc, "result", where), _RESULTS, f"{where}.result"),
         status_in=list(when["status_in"]) if "status_in" in when else None,
@@ -212,7 +231,7 @@ def capsule_from_dict(doc: dict, where: str = "capsule") -> Capsule:
             _STRATEGIES,
             f"{where}.idempotency.strategy"),
         header=idem_doc.get("header"),
-        keys=list(idem_doc.get("keys") or []),
+        keys=_keys_list(idem_doc.get("keys"), f"{where}.idempotency.keys"),
         notes=idem_doc.get("notes"))
 
     rev_doc = _require(doc, "reversibility", where)
@@ -225,6 +244,12 @@ def capsule_from_dict(doc: dict, where: str = "capsule") -> Capsule:
     if rev_class == "conditionally_reversible" and not condition:
         raise CapsuleError(
             f"{where}.reversibility: a conditionally_reversible capsule must state its condition")
+
+    version = str(_require(doc, "schema_version", where))
+    if version != SCHEMA_VERSION:
+        raise CapsuleError(
+            f"{where}: schema_version {version} is not supported, "
+            f"this runtime reads version {SCHEMA_VERSION}")
 
     return Capsule(
         id=str(_require(doc, "id", where)),

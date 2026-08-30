@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from datetime import date
 from pathlib import Path
 
@@ -36,9 +37,14 @@ def stripe_live() -> bool | None:
     capsule = bundled().get("stripe.charge")
     transport = HttpxTransport(
         "https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
+    # A fresh five-minute window: the probe order id can never exist, so a
+    # recent bound proves both endpoints and the confirmed not_landed semantics
+    # without ever filling the List page. A wide fixed bound would be the exact
+    # unbounded-window misuse the capsule warns against.
     outcome = reconcile(
-        capsule, {"order_id": "did-it-land-drift-probe-never-created",
-         "created_after": "1700000000"},
+        capsule,
+        {"order_id": "did-it-land-drift-probe-never-created",
+         "created_after": str(int(time.time()) - 300)},
         transport=transport)
     if outcome.status != "not_landed":
         print(f"  expected not_landed, got {outcome.status} ({outcome.evidence})")

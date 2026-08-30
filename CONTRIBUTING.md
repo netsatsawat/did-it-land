@@ -33,11 +33,16 @@ every capsule joins a weekly freshness check for the rest of its life.
    `typescript/test/reconcile.test.ts` for the pattern.
 5. **Add the live drift check.** Write the capsule's weekly probe against the
    service's own test environment in `scripts/drift_check.py`, and add the capsule's
-   entry to `reports/freshness.json`. A capsule without a drift check cannot merge,
-   because unverifiable knowledge rots silently.
+   entry to `reports/freshness.json`. New capsules do not merge without one, because
+   unverifiable knowledge rots silently. Honesty note: of the four founding capsules
+   only `stripe.charge` has its live harness so far, and closing that gap is open
+   work a contribution could claim.
 6. **Update the README.** The capsule table and the capsule-count badge. CI recomputes
    the numbers and fails on a mismatch, so honesty is mechanical here.
 7. **Run the gates.** `make test`, `make test-ts`, and `make verify` must all pass.
+   The TypeScript tests run through Node's native type stripping, which needs Node
+   22.18 or newer for development. Consumers of the built package still only need
+   Node 18.
 
 If you also want to write a short teardown of what it took to get the probe right,
 those posts are how the next contributor finds this project, and we will link it from

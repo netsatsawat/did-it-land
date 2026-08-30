@@ -76,6 +76,27 @@ class TestCapsuleValidation(unittest.TestCase):
             capsule_from_dict(doc)
         self.assertIn("reversability", str(raised.exception))
 
+    def test_wrong_typed_conditions_are_rejected(self):
+        for mutate, needle in (
+                (lambda d: d["probe"]["interpret"][0]["when"].__setitem__("status_in", 200),
+                 "status_in"),
+                (lambda d: d["probe"]["interpret"][0]["when"].__setitem__("exists", "yes"),
+                 "exists"),
+                (lambda d: d["probe"]["interpret"][0]["when"].__setitem__("count_gte", "2"),
+                 "count_gte")):
+            doc = good_doc()
+            mutate(doc)
+            with self.assertRaises(CapsuleError, msg=needle) as raised:
+                capsule_from_dict(doc)
+            self.assertIn(needle, str(raised.exception), msg=needle)
+
+    def test_unsupported_schema_version_is_refused(self):
+        doc = good_doc()
+        doc["schema_version"] = "99"
+        with self.assertRaises(CapsuleError) as raised:
+            capsule_from_dict(doc)
+        self.assertIn("99", str(raised.exception))
+
     def test_native_probe_needs_handler(self):
         doc = good_doc()
         doc["probe"] = {"kind": "native"}

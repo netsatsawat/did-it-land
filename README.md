@@ -231,12 +231,14 @@ tiers. The fast tier runs on every change against local stand-ins, with no accou
 needed, and proves the code and the shape of every capsule. The weekly tier
 ([drift.yml](https://github.com/netsatsawat/did-it-land/blob/main/.github/workflows/drift.yml))
 asks the real services, in their test environments, whether they still behave the way
-each capsule says, and writes the date of the last successful check into
+a capsule says, running its full question-and-confirm logic rather than pinging one
+URL, and writes the date of the last successful check into
 [reports/freshness.json](https://github.com/netsatsawat/did-it-land/blob/main/reports/freshness.json).
 And the build recomputes every number in this page from the project's own files,
-failing when one drifts. One honest note while this is new: the weekly job ships with
-this repo but has not accumulated history yet, and the freshness file says so plainly
-with a null date until each capsule's first green run.
+failing when one drifts. Two honest notes while this is new: the weekly job ships with this repo but has not
+accumulated history yet, and the freshness file says so plainly with a null date until
+each capsule's first green run. And the live harness covers `stripe.charge` today,
+with the other three capsules verified offline until their sandbox checks land.
 
 ## 🚫 What this deliberately is not
 

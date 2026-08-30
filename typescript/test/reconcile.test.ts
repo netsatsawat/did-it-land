@@ -202,6 +202,26 @@ test("wrong-typed conditions are rejected at load time", () => {
   );
 });
 
+test("an unsupported schema_version is refused", () => {
+  const doc = {
+    id: "acme.do",
+    provider: "acme",
+    operation: "do",
+    schema_version: "99",
+    idempotency: { strategy: "none" },
+    probe: {
+      kind: "http",
+      request: { method: "GET", path: "/x" },
+      interpret: [{ when: { status_in: [200] }, result: "landed" }],
+    },
+    reversibility: { class: "reversible" },
+  };
+  assert.throws(
+    () => capsuleFromDoc(doc),
+    (err: unknown) => err instanceof CapsuleError && String(err).includes("99"),
+  );
+});
+
 test("validator rejects a bad capsule", () => {
   assert.throws(
     () => capsuleFromDoc({ id: "x.y" }),

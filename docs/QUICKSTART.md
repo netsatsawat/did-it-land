@@ -100,14 +100,14 @@ from the package, so it works in any plain worker or queue consumer:
 ```python
 from did_it_land import guard, UnknownOutcome
 
-def handle(order_id: str):
-        return guard(
+def handle(order_id: str, order_started_at: str):
+    return guard(
         capsule,
         {"order_id": order_id, "created_after": order_started_at},
         stripe,
-        lambda: create_charge(order_id),     # your real call goes here
-        unknown_retries=3,                   # optional: wait and re-ask 3 times
-        unknown_wait=5.0)                    # seconds between asks
+        lambda: create_charge(order_id),   # your real call goes here
+        unknown_retries=3,                 # optional: wait and re-ask 3 times
+        unknown_wait=5.0)                  # seconds between asks
 ```
 
 `guard` skips the call when the charge already exists, runs it when it provably does

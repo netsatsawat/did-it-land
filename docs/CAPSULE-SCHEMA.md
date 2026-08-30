@@ -62,12 +62,13 @@ shape the Stripe capsule uses:
 
 ```yaml
 interpret:
+  # the primary search is already scoped to the order in its query, so its
+  # where filters by status alone; the confirm's List is account-wide, so
+  # there the where also matches the caller's order id
   - when:
       status_in: [200]
       json_path: data
-      where:
-        metadata.order_id: "{order_id}"
-        status: succeeded
+      where: {status: succeeded}
       count_gte: 1
     result: landed
   - when:
