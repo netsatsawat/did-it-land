@@ -21,6 +21,7 @@ export interface Outcome {
 export interface CompensationResult {
   status: string;
   capsuleId: string;
+  evidence?: Record<string, unknown>;
 }
 
 export class EffectError extends Error {}
@@ -217,10 +218,18 @@ export async function unwind(
     resp = await transport.send(bindRequest(comp.request!, context, capsule.id));
   } catch (err) {
     if (err instanceof TransportError) {
-      return { status: "unknown", capsuleId: capsule.id };
+      return {
+        status: "unknown",
+        capsuleId: capsule.id,
+        evidence: { transport_error: String(err) },
+      };
     }
     throw err;
   }
   const ok = resp.statusCode >= 200 && resp.statusCode < 300;
-  return { status: ok ? "compensated" : "failed", capsuleId: capsule.id };
+  return {
+    status: ok ? "compensated" : "failed",
+    capsuleId: capsule.id,
+    evidence: { status_code: resp.statusCode },
+  };
 }

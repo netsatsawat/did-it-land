@@ -52,6 +52,30 @@ class TestCapsuleValidation(unittest.TestCase):
                 capsule_from_dict(doc)
             self.assertIn(expected, str(ctx.exception), msg=expected)
 
+    def test_typoed_rule_keys_are_rejected_not_ignored(self):
+        # A dropped typo would leave a rule with zero conditions, which matches
+        # every response. The validator must refuse it loudly instead.
+        doc = good_doc()
+        doc["probe"]["interpret"] = [
+            {"when": {"statuses_in": [200]}, "result": "landed"}]
+        with self.assertRaises(CapsuleError) as raised:
+            capsule_from_dict(doc)
+        self.assertIn("statuses_in", str(raised.exception))
+
+    def test_conditions_outside_when_are_rejected(self):
+        doc = good_doc()
+        doc["probe"]["interpret"] = [{"status_in": [200], "result": "landed"}]
+        with self.assertRaises(CapsuleError) as raised:
+            capsule_from_dict(doc)
+        self.assertIn("status_in", str(raised.exception))
+
+    def test_unknown_top_level_key_is_rejected(self):
+        doc = good_doc()
+        doc["reversability"] = {"class": "reversible"}
+        with self.assertRaises(CapsuleError) as raised:
+            capsule_from_dict(doc)
+        self.assertIn("reversability", str(raised.exception))
+
     def test_native_probe_needs_handler(self):
         doc = good_doc()
         doc["probe"] = {"kind": "native"}

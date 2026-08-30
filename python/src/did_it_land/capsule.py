@@ -102,6 +102,17 @@ class Capsule:
     source: str | list[str] | None = None
 
 
+def _no_extras(doc: dict, allowed: set[str], where: str) -> None:
+    """Reject keys the schema does not know. A typo'd condition would otherwise
+    become a rule with no conditions, which matches every response, and a probe
+    that always answers landed is the precise wrong answer this library exists
+    to prevent."""
+    extras = set(doc) - allowed
+    if extras:
+        names = ", ".join(sorted(str(x) for x in extras))
+        raise CapsuleError(f"{where}: unknown key(s) {names}")
+
+
 def _require(doc: dict, key: str, where: str) -> object:
     if key not in doc:
         raise CapsuleError(f"{where}: missing required field '{key}'")
@@ -116,6 +127,7 @@ def _one_of(value: object, allowed: set[str], where: str) -> str:
 
 
 def _request_from(doc: dict, where: str) -> Request:
+    _no_extras(doc, {"method", "path", "query", "headers"}, where)
     method = _one_of(str(_require(doc, "method", where)).upper(), _METHODS, f"{where}.method")
     return Request(
         method=method,
@@ -125,7 +137,12 @@ def _request_from(doc: dict, where: str) -> Request:
 
 
 def _rule_from(doc: dict, where: str) -> Rule:
+    _no_extras(doc, {"when", "result"}, where)
     when = doc.get("when") or {}
+    _no_extras(
+        when,
+        {"status_in", "json_path", "exists", "equals", "count_gte", "where"},
+        f"{where}.when")
     return Rule(
         result=_one_of(_require(doc, "result", where), _RESULTS, f"{where}.result"),
         status_in=list(when["status_in"]) if "status_in" in when else None,
@@ -138,6 +155,7 @@ def _rule_from(doc: dict, where: str) -> Rule:
 
 def _probe_from(doc: dict) -> Probe:
     where = "probe"
+    _no_extras(doc, {"kind", "handler", "request", "interpret", "confirm"}, where)
     kind = _one_of(_require(doc, "kind", where), _PROBE_KINDS, f"{where}.kind")
     if kind == "native":
         handler = str(_require(doc, "handler", where))
@@ -151,6 +169,7 @@ def _probe_from(doc: dict) -> Probe:
     if doc.get("confirm") is not None:
         cdoc = doc["confirm"]
         cwhere = f"{where}.confirm"
+        _no_extras(cdoc, {"request", "interpret", "notes"}, cwhere)
         creq = _request_from(_require(cdoc, "request", cwhere), f"{cwhere}.request")
         craw = _require(cdoc, "interpret", cwhere)
         if not craw:
@@ -164,6 +183,7 @@ def _compensation_from(doc: dict | None) -> Compensation | None:
     if doc is None:
         return None
     where = "compensation"
+    _no_extras(doc, {"kind", "handler", "request", "notes"}, where)
     kind = _one_of(_require(doc, "kind", where), _COMP_KINDS, f"{where}.kind")
     if kind == "none":
         return Compensation(kind=kind, notes=doc.get("notes"))
@@ -178,8 +198,14 @@ def capsule_from_dict(doc: dict, where: str = "capsule") -> Capsule:
     """Validate a parsed capsule document and build a Capsule, or raise CapsuleError."""
     if not isinstance(doc, dict):
         raise CapsuleError(f"{where}: expected a mapping, got {type(doc).__name__}")
+    _no_extras(
+        doc,
+        {"id", "provider", "operation", "schema_version", "summary", "idempotency",
+         "probe", "reversibility", "compensation", "notes", "source"},
+        where)
 
     idem_doc = _require(doc, "idempotency", where)
+    _no_extras(idem_doc, {"strategy", "header", "keys", "notes"}, f"{where}.idempotency")
     idempotency = Idempotency(
         strategy=_one_of(
             _require(idem_doc, "strategy", f"{where}.idempotency"),
@@ -190,6 +216,7 @@ def capsule_from_dict(doc: dict, where: str = "capsule") -> Capsule:
         notes=idem_doc.get("notes"))
 
     rev_doc = _require(doc, "reversibility", where)
+    _no_extras(rev_doc, {"class", "condition"}, f"{where}.reversibility")
     rev_class = _one_of(
         _require(rev_doc, "class", f"{where}.reversibility"),
         _REV_CLASSES,

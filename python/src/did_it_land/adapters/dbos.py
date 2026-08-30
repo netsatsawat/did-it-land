@@ -98,9 +98,13 @@ class Saga:
 
     The journal lives in process memory. It survives an exception inside the
     workflow, which is the case it exists for, and under a deterministic-replay
-    engine the record() calls are replayed on recovery. A bare process crash with
-    no replaying engine loses it, so if you need the journal to outlive the
-    process, persist each recorded context in your engine's own store."""
+    engine the record() calls are replayed on recovery, but only when record()
+    lives in WORKFLOW-BODY code. Engines skip completed steps on recovery, so a
+    record() inside a step body never replays: call record() in the workflow with
+    the step's return value, and create one Saga per workflow invocation. A bare
+    process crash with no replaying engine loses the journal either way, so if it
+    must outlive the process, persist each recorded context in your engine's own
+    store."""
 
     _steps: list[_Step] = field(default_factory=list)
 
@@ -112,10 +116,20 @@ class Saga:
         self._steps.append(_Step(capsule, context, transport))
 
     def compensate(self) -> list[CompensationResult]:
-        """Run unwind for every recorded effect, most recent first."""
+        """Run unwind for every recorded effect, most recent first.
+
+        One bad step must not strand the rest: an unwind that raises is captured
+        as a CompensationResult with status "error" and the walk continues, so
+        every recorded effect gets its attempt and the caller sees the full list.
+        """
         results = []
         for step in reversed(self._steps):
-            results.append(unwind(step.capsule, step.context, transport=step.transport))
+            try:
+                results.append(
+                    unwind(step.capsule, step.context, transport=step.transport))
+            except Exception as exc:
+                results.append(CompensationResult(
+                    "error", step.capsule.id, {"error": str(exc)}))
         return results
 
     def __len__(self) -> int:

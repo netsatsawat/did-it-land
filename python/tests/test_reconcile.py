@@ -58,6 +58,40 @@ class TestHttpProbe(unittest.TestCase):
         self.assertEqual(outcome.evidence["ids"], ["pi_lagged"],
                          "the id must flow so unwind needs no second lookup")
 
+    def test_sca_pending_statuses_are_unknown_not_not_landed(self):
+        # A crash during the customer's 3DS step is routine in SCA markets. The
+        # first payment can still complete, so re-charging on top of it is the
+        # double charge. Both probes must answer unknown for the waiting states.
+        capsule = self.reg.get("stripe.charge")
+        empty = Response(200, {"data": []})
+        for status in ("requires_action", "requires_confirmation", "requires_capture"):
+            body = {"data": [{
+                "id": "pi_1", "status": status,
+                "metadata": {"order_id": "ORD-1"}}]}
+            primary = ScriptedTransport({
+                ("GET", "/v1/payment_intents/search"): Response(200, body),
+                ("GET", "/v1/payment_intents"): empty})
+            outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=primary)
+            self.assertEqual(outcome.status, "unknown", msg=f"primary {status}")
+            via_confirm = ScriptedTransport({
+                ("GET", "/v1/payment_intents/search"): empty,
+                ("GET", "/v1/payment_intents"): Response(200, body)})
+            outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=via_confirm)
+            self.assertEqual(outcome.status, "unknown", msg=f"confirm {status}")
+
+    def test_full_list_page_with_more_behind_it_is_unknown(self):
+        # A hundred newer intents can hide the landed charge beyond the List
+        # page. has_more true means the absence proves nothing.
+        capsule = self.reg.get("stripe.charge")
+        page = {"data": [
+            {"id": f"pi_{i}", "status": "canceled", "metadata": {"order_id": f"X{i}"}}
+            for i in range(100)], "has_more": True}
+        t = ScriptedTransport({
+            ("GET", "/v1/payment_intents/search"): Response(200, {"data": []}),
+            ("GET", "/v1/payment_intents"): Response(200, page)})
+        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        self.assertEqual(outcome.status, "unknown")
+
     def test_confirm_filters_by_the_callers_order_id(self):
         # Someone else's charge in the recent list must not read as ours.
         capsule = self.reg.get("stripe.charge")

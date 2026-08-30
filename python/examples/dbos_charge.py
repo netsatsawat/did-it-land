@@ -41,30 +41,37 @@ def main() -> int:
     DBOS()
     charge = bundled().get("stripe.charge")
     stripe = _stripe()
-    saga = Saga()
 
     @DBOS.step()
     def charge_customer(order_id: str) -> str:
-        # On recovery this step re-runs. guard probes first and only charges if the
-        # charge has not already landed, keyed on the order id the workflow always has.
+        # On recovery an incomplete step re-runs, so guard probes first and only
+        # charges if the charge has not already landed, keyed on the order id the
+        # workflow always has. Two contracts make the probe able to see your
+        # charge at all: the create call must attach metadata={"order_id":
+        # order_id}, and its Idempotency-Key must derive from the order id, for
+        # example f"charge-{order_id}", never from a value minted inside the step.
         def do_charge() -> str:
             # your real Stripe create call goes here; return the payment intent id
             raise NotImplementedError("wire up your Stripe create call")
 
         result = guard(charge, {"order_id": order_id}, stripe, do_charge)
-        # The undo template needs the payment intent id, so record THAT, never the
+        # The undo template needs the payment intent id, so return THAT, never the
         # order id. A landed probe already carries the id in its evidence.
         if isinstance(result, Skipped):
-            pi_id = result.outcome.evidence["ids"][0]
-        else:
-            pi_id = str(result)
-        saga.record(charge, {"payment_intent_id": pi_id}, stripe)
-        return pi_id
+            return result.outcome.evidence["ids"][0]
+        return str(result)
 
     @DBOS.workflow()
     def fulfil(order_id: str) -> str:
+        # The Saga lives in the WORKFLOW body, one per invocation, and record()
+        # runs here with the step's return value. Engines skip completed steps on
+        # recovery, so a record() inside the step would never replay and the
+        # journal would be empty exactly when compensation matters.
+        saga = Saga()
         try:
-            return charge_customer(order_id)
+            pi_id = charge_customer(order_id)
+            saga.record(charge, {"payment_intent_id": pi_id}, stripe)
+            return pi_id
         except Exception:
             saga.compensate()
             raise

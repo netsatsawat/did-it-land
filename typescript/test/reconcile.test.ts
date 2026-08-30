@@ -136,6 +136,18 @@ test("missing context placeholder throws", async () => {
   );
 });
 
+test("unwind carries evidence for every status", async () => {
+  const capsule = bundled().get("stripe.charge");
+  const good = route("POST", "/v1/refunds", { statusCode: 200, body: { id: "re_1" } });
+  const okComp = await unwind(capsule, { payment_intent_id: "pi_1" }, good);
+  assert.equal(okComp.evidence?.status_code, 200);
+
+  const declined = route("POST", "/v1/refunds", { statusCode: 402, body: {} });
+  const badComp = await unwind(capsule, { payment_intent_id: "pi_1" }, declined);
+  assert.equal(badComp.status, "failed");
+  assert.equal(badComp.evidence?.status_code, 402);
+});
+
 test("a timed-out probe answers unknown instead of throwing", async () => {
   const capsule = bundled().get("stripe.charge");
   const timingOut = {
