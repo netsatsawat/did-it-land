@@ -94,6 +94,12 @@ def run_demo() -> dict:
     """Run both recovery paths and return a summary. Prints a narrative as it goes."""
     capsule = bundled().get("stripe.charge")
     order_id = "ORD-1"
+
+    def _ctx(oid: str) -> dict:
+        # A real workflow records the moment the order began and passes it as
+        # created_after so the confirm walks only that window. The fake ignores
+        # time, so any fixed instant works here.
+        return {"order_id": oid, "created_after": "1700000000"}
     out: list[str] = []
 
     def say(line: str) -> None:
@@ -122,7 +128,7 @@ def run_demo() -> dict:
     fixed = FakeStripe()
     _charge(fixed, order_id, idem_key="attempt-1-key")
     say("Run B, answer: landed. The charge made it out before the crash.")
-    landed = reconcile(capsule, {"order_id": order_id}, transport=fixed)
+    landed = reconcile(capsule, _ctx(order_id), transport=fixed)
     say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {landed.status}")
     if not landed.landed:
         _charge(fixed, order_id, idem_key="recovery-fresh-key")
@@ -134,7 +140,7 @@ def run_demo() -> dict:
     # so running the step now is safe.
     empty = FakeStripe()
     say("Run C, answer: not landed. The crash hit before the request left.")
-    absent = reconcile(capsule, {"order_id": order_id}, transport=empty)
+    absent = reconcile(capsule, _ctx(order_id), transport=empty)
     say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {absent.status}")
     if absent.not_landed:
         _charge(empty, order_id, idem_key="derived-from-order-key")
@@ -148,11 +154,11 @@ def run_demo() -> dict:
     _charge(downed, order_id, idem_key="attempt-1-key")
     downed.outage = True
     say("Run D, answer: unknown. The service is down when recovery asks.")
-    unknown = reconcile(capsule, {"order_id": order_id}, transport=downed)
+    unknown = reconcile(capsule, _ctx(order_id), transport=downed)
     say(f"  recovery  : reconcile(stripe.charge, order_id={order_id}) -> {unknown.status}")
     say("  decision  : refuse to act on a guess, wait for the service")
     downed.outage = False
-    retried = reconcile(capsule, {"order_id": order_id}, transport=downed)
+    retried = reconcile(capsule, _ctx(order_id), transport=downed)
     say(f"  re-probe  : service is back -> {retried.status}, retry skipped")
     downed_count = len(downed.charges_for(order_id))
     say(f"  result    : {downed_count} charge for {order_id}, still exactly one")

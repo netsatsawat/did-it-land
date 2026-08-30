@@ -38,7 +38,7 @@ class TestHttpProbe(unittest.TestCase):
             (Response(503, {}), "unknown")]
         for resp, expected in cases:
             t = ScriptedTransport({search: resp, listing: empty})
-            outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+            outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=t)
             self.assertEqual(outcome.status, expected, msg=f"body {resp.body}")
 
     def test_confirm_rescues_a_lagging_search(self):
@@ -52,7 +52,7 @@ class TestHttpProbe(unittest.TestCase):
         t = ScriptedTransport({
             ("GET", "/v1/payment_intents/search"): Response(200, {"data": []}),
             ("GET", "/v1/payment_intents"): Response(200, {"data": [landed_intent]})})
-        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=t)
         self.assertEqual(outcome.status, "landed")
         self.assertTrue(outcome.evidence["confirmed"])
         self.assertEqual(outcome.evidence["ids"], ["pi_lagged"],
@@ -71,12 +71,12 @@ class TestHttpProbe(unittest.TestCase):
             primary = ScriptedTransport({
                 ("GET", "/v1/payment_intents/search"): Response(200, body),
                 ("GET", "/v1/payment_intents"): empty})
-            outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=primary)
+            outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=primary)
             self.assertEqual(outcome.status, "unknown", msg=f"primary {status}")
             via_confirm = ScriptedTransport({
                 ("GET", "/v1/payment_intents/search"): empty,
                 ("GET", "/v1/payment_intents"): Response(200, body)})
-            outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=via_confirm)
+            outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=via_confirm)
             self.assertEqual(outcome.status, "unknown", msg=f"confirm {status}")
 
     def test_full_list_page_with_more_behind_it_is_unknown(self):
@@ -89,7 +89,7 @@ class TestHttpProbe(unittest.TestCase):
         t = ScriptedTransport({
             ("GET", "/v1/payment_intents/search"): Response(200, {"data": []}),
             ("GET", "/v1/payment_intents"): Response(200, page)})
-        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=t)
         self.assertEqual(outcome.status, "unknown")
 
     def test_confirm_filters_by_the_callers_order_id(self):
@@ -102,7 +102,7 @@ class TestHttpProbe(unittest.TestCase):
         t = ScriptedTransport({
             ("GET", "/v1/payment_intents/search"): Response(200, {"data": []}),
             ("GET", "/v1/payment_intents"): Response(200, {"data": [other]})})
-        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=t)
         self.assertEqual(outcome.status, "not_landed")
         self.assertTrue(outcome.evidence["confirmed"])
 
@@ -114,7 +114,7 @@ class TestHttpProbe(unittest.TestCase):
             {"id": "pi_2", "status": "succeeded"},
             {"id": "pi_3", "status": "requires_payment_method"}]}
         t = ScriptedTransport({("GET", path): Response(200, body)})
-        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=t)
+        outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=t)
         self.assertEqual(outcome.status, "landed")
         self.assertEqual(outcome.evidence["matched"], 2, "two succeeded intents is a duplicate")
         self.assertEqual(outcome.evidence["ids"], ["pi_1", "pi_2"])
@@ -156,7 +156,7 @@ class TestHttpProbe(unittest.TestCase):
             def send(self, request):
                 raise TransportError("GET /v1/payment_intents/search: timed out")
 
-        outcome = reconcile(capsule, {"order_id": "ORD-1"}, transport=TimingOut())
+        outcome = reconcile(capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, transport=TimingOut())
         self.assertEqual(outcome.status, "unknown")
         self.assertIn("timed out", outcome.evidence["transport_error"])
 

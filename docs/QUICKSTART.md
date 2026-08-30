@@ -50,8 +50,17 @@ Use a Stripe test-mode key, so no real money is involved. The Stripe capsule fin
 charge by the order id you attached as metadata when creating it, so create one test
 payment first, with `metadata[order_id]=QS-1`, in the Stripe dashboard or from code.
 
+The capsule needs two context values. `order_id` is yours. `created_after` is a unix
+timestamp from before the charge began, which a real workflow records the moment an
+order starts. For this manual test, yesterday is safely before your test payment:
+
 ```python
-outcome = reconcile(capsule, {"order_id": "QS-1"}, transport=stripe)
+import time
+
+context = {
+    "order_id": "QS-1",
+    "created_after": str(int(time.time()) - 86400)}
+outcome = reconcile(capsule, context, transport=stripe)
 
 if outcome.landed:
     print("it went through", outcome.evidence)
@@ -67,10 +76,10 @@ have a duplicate to refund.
 
 Stripe's search can lag a few moments behind a brand-new charge, and the capsule
 handles that for you: on an empty search answer it automatically asks Stripe's List
-API, which does not lag, and only then answers not landed, stamping `confirmed: True`
-into the evidence. The one residual gap is a burst of more than a hundred new payment
-intents between crash and recovery, in which case the answer is unknown rather than a
-guess.
+API, which does not lag, bounded to intents created since your `created_after` moment,
+and only then answers not landed, stamping `confirmed: True` into the evidence. The
+one residual gap is more than a hundred intents on your account within that window, in
+which case the answer is unknown rather than a guess.
 
 ## 4. Undo it
 
@@ -92,9 +101,9 @@ from the package, so it works in any plain worker or queue consumer:
 from did_it_land import guard, UnknownOutcome
 
 def handle(order_id: str):
-    return guard(
+        return guard(
         capsule,
-        {"order_id": order_id},
+        {"order_id": order_id, "created_after": order_started_at},
         stripe,
         lambda: create_charge(order_id),     # your real call goes here
         unknown_retries=3,                   # optional: wait and re-ask 3 times
@@ -108,8 +117,10 @@ patience you gave it. Catch that exception and let your queue redeliver later.
 Two things in your own create call make the probe able to see the charge at all.
 Attach the order id as metadata, `metadata={"order_id": order_id}`, because that is
 what both probes search by, and a charge created without it is invisible to recovery.
-And derive the Stripe `Idempotency-Key` from the same order id, for example
-`f"charge-{order_id}"`, never from a value minted inside the step.
+Derive the Stripe `Idempotency-Key` from the same order id, for example
+`f"charge-{order_id}"`, never from a value minted inside the step. And record
+`order_started_at = str(int(time.time()))` when the order begins, because the
+capsule's second question walks only the intents created after that moment.
 
 If you do run DBOS, the wiring inside a workflow is in
 [python/examples/dbos_charge.py](../python/examples/dbos_charge.py).
@@ -143,7 +154,11 @@ const stripe = {
   },
 };
 
-const outcome = await reconcile(capsule, { order_id: "QS-1" }, stripe);
+const outcome = await reconcile(
+  capsule,
+  { order_id: "QS-1", created_after: String(Math.floor(Date.now() / 1000) - 86400) },
+  stripe,
+);
 ```
 
 ## 7. Where to go next

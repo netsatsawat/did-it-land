@@ -59,7 +59,7 @@ test("stripe probe maps responses to statuses", async () => {
         ["GET /v1/payment_intents", empty],
       ]),
     );
-    const outcome = await reconcile(capsule, { order_id: "ORD-1" }, t);
+    const outcome = await reconcile(capsule, { order_id: "ORD-1", created_after: "1700000000" }, t);
     assert.equal(outcome.status, expected, `status ${resp.statusCode}`);
   }
 });
@@ -74,13 +74,13 @@ test("confirm rescues a lagging search and carries the id", async () => {
         {
           statusCode: 200,
           body: {
-            data: [{ id: "pi_lag", status: "succeeded", metadata: { order_id: "ORD-1" } }],
+            data: [{ id: "pi_lag", status: "succeeded", metadata: { order_id: "ORD-1", created_after: "1700000000" } }],
           },
         },
       ],
     ]),
   );
-  const outcome = await reconcile(capsule, { order_id: "ORD-1" }, t);
+  const outcome = await reconcile(capsule, { order_id: "ORD-1", created_after: "1700000000" }, t);
   assert.equal(outcome.status, "landed");
   assert.equal(outcome.evidence?.confirmed, true);
   assert.deepEqual(outcome.evidence?.ids, ["pi_lag"]);
@@ -111,7 +111,7 @@ test("stripe probe surfaces duplicate succeeded intents in evidence", async () =
     ],
   };
   const t = route("GET", "/v1/payment_intents/search", { statusCode: 200, body });
-  const outcome = await reconcile(capsule, { order_id: "ORD-1" }, t);
+  const outcome = await reconcile(capsule, { order_id: "ORD-1", created_after: "1700000000" }, t);
   assert.equal(outcome.status, "landed");
   assert.equal(outcome.evidence?.matched, 2);
 });
@@ -155,11 +155,51 @@ test("a timed-out probe answers unknown instead of throwing", async () => {
       throw new TransportError("timed out");
     },
   };
-  const outcome = await reconcile(capsule, { order_id: "ORD-1" }, timingOut);
+  const outcome = await reconcile(capsule, { order_id: "ORD-1", created_after: "1700000000" }, timingOut);
   assert.equal(outcome.status, "unknown");
 
   const comp = await unwind(capsule, { payment_intent_id: "pi_1" }, timingOut);
   assert.equal(comp.status, "unknown");
+});
+
+test("a typo'd rule key is rejected, never silently dropped", () => {
+  const doc = {
+    id: "acme.do",
+    provider: "acme",
+    operation: "do",
+    schema_version: "1",
+    idempotency: { strategy: "none" },
+    probe: {
+      kind: "http",
+      request: { method: "GET", path: "/x" },
+      interpret: [{ when: { statuses_in: [200] }, result: "landed" }],
+    },
+    reversibility: { class: "reversible" },
+  };
+  assert.throws(
+    () => capsuleFromDoc(doc),
+    (err: unknown) => err instanceof CapsuleError && String(err).includes("statuses_in"),
+  );
+});
+
+test("wrong-typed conditions are rejected at load time", () => {
+  const doc = {
+    id: "acme.do",
+    provider: "acme",
+    operation: "do",
+    schema_version: "1",
+    idempotency: { strategy: "none" },
+    probe: {
+      kind: "http",
+      request: { method: "GET", path: "/x" },
+      interpret: [{ when: { status_in: 200 }, result: "landed" }],
+    },
+    reversibility: { class: "reversible" },
+  };
+  assert.throws(
+    () => capsuleFromDoc(doc),
+    (err: unknown) => err instanceof CapsuleError && String(err).includes("status_in"),
+  );
 });
 
 test("validator rejects a bad capsule", () => {

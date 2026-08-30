@@ -19,7 +19,8 @@ from did_it_land import bundled, reconcile, unwind, HttpxTransport
 stripe = HttpxTransport("https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
 charge = bundled().get("stripe.charge")
 
-outcome = reconcile(charge, {"order_id": "ORD-1"}, transport=stripe)
+context = {"order_id": "ORD-1", "created_after": order_started_at}
+outcome = reconcile(charge, context, transport=stripe)
 if outcome.landed:
     ...        # the charge already happened, skip the retry
 

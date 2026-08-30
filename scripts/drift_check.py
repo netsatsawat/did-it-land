@@ -37,7 +37,8 @@ def stripe_live() -> bool | None:
     transport = HttpxTransport(
         "https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
     outcome = reconcile(
-        capsule, {"order_id": "did-it-land-drift-probe-never-created"},
+        capsule, {"order_id": "did-it-land-drift-probe-never-created",
+         "created_after": "1700000000"},
         transport=transport)
     if outcome.status != "not_landed":
         print(f"  expected not_landed, got {outcome.status} ({outcome.evidence})")
