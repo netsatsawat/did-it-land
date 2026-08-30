@@ -53,6 +53,11 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: build and publish with provenance
         run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_TOKEN is not set. Skipping the npm publish."
+            echo "Add the secret and re-run this workflow to publish to npm."
+            exit 0
+          fi
           cd typescript
           npm ci
           npm test
