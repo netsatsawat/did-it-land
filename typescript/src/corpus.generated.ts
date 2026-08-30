@@ -269,7 +269,8 @@ export const CORPUS: unknown[] = [
           "method": "GET",
           "path": "/v1/payment_intents",
           "query": {
-            "limit": "100"
+            "limit": "100",
+            "created[gte]": "{created_after}"
           }
         },
         "interpret": [
@@ -373,7 +374,7 @@ export const CORPUS: unknown[] = [
             "result": "unknown"
           }
         ],
-        "notes": "Search can lag a just-created charge, so an empty search answer is never trusted on its own. This second question walks the List API, which Stripe does not subject to search indexing lag, filtering the most recent hundred intents client-side by the caller's order id. Only after the List also comes back empty does the capsule answer not_landed. A burst of more than a hundred intents between the crash and the recovery could still hide the charge from this page, which is why the request keeps limit at the maximum.\n"
+        "notes": "Search can lag a just-created charge, so an empty search answer is never trusted on its own. This second question walks the List API, which Stripe does not subject to search indexing lag, bounded to intents created since the order began via the created_after context value, and filtered client-side by the caller's order id. Only after that bounded page also comes back empty does the capsule answer not_landed. The bound is what makes has_more meaningful: an unbounded List pages over the whole account history and has_more is simply always true on a mature account, but within the order's own window has_more means more than a hundred intents arrived since this order started, and only then is the absence inconclusive.\n"
       }
     },
     "reversibility": {
@@ -393,7 +394,7 @@ export const CORPUS: unknown[] = [
       },
       "notes": "Refund the payment intent found by the probe, with its own idempotency key derived from the payment intent id, so a crashed compensation cannot refund twice either. A refund reverses the money movement but Stripe keeps the original processing fees, and on some asynchronous payment methods a refund can fail after being accepted, so treat compensated as accepted, not settled. One more Stripe behavior to know: the key pins the FIRST response for about 24 hours, a failure included. A refund that failed for a fixable reason will replay that same failure on retry under this key, so a deliberate second attempt after fixing the cause needs a fresh key of your own choosing.\n"
     },
-    "notes": "The probe asks a sharper question than \"does a payment intent exist\". It filters the search results by status, because an intent stuck at requires_payment_method is a declined card, not a landed charge, and one in processing is money in flight, which is honestly unknown. A matched count above one means a duplicate already exists and one intent needs refunding; the count is surfaced in the outcome's evidence. Two consistency caveats from Stripe's own documentation: search is not for read-after-write flows, since new records can take a short while to become searchable, so an empty result immediately after a crash should be re-checked after a delay (the List API is not subject to that lag and can serve as the fallback); and status filtered in the query text can be served from a cache, which is why the filtering here happens client-side against the returned objects.\n",
+    "notes": "Context contract: order_id is the caller's own order identifier, attached as metadata when the charge is created, and created_after is a unix timestamp in seconds from just before the order began, which the workflow always owns. The probe asks a sharper question than \"does a payment intent exist\". It filters the search results by status, because an intent stuck at requires_payment_method is a declined card, not a landed charge, and one in processing is money in flight, which is honestly unknown. A matched count above one means a duplicate already exists and one intent needs refunding; the count is surfaced in the outcome's evidence. Two consistency caveats from Stripe's own documentation: search is not for read-after-write flows, since new records can take a short while to become searchable, so an empty result immediately after a crash should be re-checked after a delay (the List API is not subject to that lag and can serve as the fallback); and status filtered in the query text can be served from a cache, which is why the filtering here happens client-side against the returned objects.\n",
     "source": [
       "https://docs.stripe.com/api/payment_intents/search",
       "https://docs.stripe.com/api/payment_intents/list",

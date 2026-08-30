@@ -111,7 +111,8 @@ from did_it_land import bundled, reconcile, unwind, HttpxTransport
 stripe = HttpxTransport("https://api.stripe.com", headers={"Authorization": f"Bearer {key}"})
 charge = bundled().get("stripe.charge")
 
-outcome = reconcile(charge, {"order_id": "ORD-1"}, transport=stripe)
+context = {"order_id": "ORD-1", "created_after": order_started_at}
+outcome = reconcile(charge, context, transport=stripe)
 if outcome.landed:
     ...        # the charge already happened, do not run it again
 
@@ -209,8 +210,10 @@ from did_it_land.adapters.dbos import guard, Saga
 charge = bundled().get("stripe.charge")
 
 @DBOS.step()
-def charge_customer(order_id: str) -> object:
-    return guard(charge, {"order_id": order_id}, stripe, lambda: create_charge(order_id))
+def charge_customer(order_id: str, started_at: str) -> object:
+    return guard(
+        charge, {"order_id": order_id, "created_after": started_at}, stripe,
+        lambda: create_charge(order_id))
 ```
 
 `Saga` keeps a list of everything a job has done so far, so a failed job can undo its

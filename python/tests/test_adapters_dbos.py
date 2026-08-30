@@ -25,20 +25,20 @@ class TestGuard(unittest.TestCase):
     def test_guard_skips_when_already_landed(self):
         landed = OneRoute(Response(200, {"data": [{"id": "pi_1", "status": "succeeded"}]}))
         calls = []
-        result = guard(self.capsule, {"order_id": "ORD-1"}, landed, lambda: calls.append("did"))
+        result = guard(self.capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, landed, lambda: calls.append("did"))
         self.assertIsInstance(result, Skipped)
         self.assertEqual(calls, [])
 
     def test_guard_runs_when_not_landed(self):
         empty = OneRoute(Response(200, {"data": []}))
-        result = guard(self.capsule, {"order_id": "ORD-1"}, empty, lambda: "charged")
+        result = guard(self.capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, empty, lambda: "charged")
         self.assertEqual(result, "charged")
 
     def test_guard_refuses_to_act_on_unknown(self):
         outage = OneRoute(Response(503, {}))
         calls = []
         with self.assertRaises(UnknownOutcome) as raised:
-            guard(self.capsule, {"order_id": "ORD-1"}, outage, lambda: calls.append("did"))
+            guard(self.capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, outage, lambda: calls.append("did"))
         self.assertEqual(calls, [], "an unknown probe result must never fire the side effect")
         self.assertEqual(raised.exception.outcome.status, "unknown")
 
@@ -54,7 +54,9 @@ class TestGuard(unittest.TestCase):
 
         naps = []
         result = guard(
-            self.capsule, {"order_id": "ORD-1"}, Sequenced(), lambda: "charged",
+            self.capsule,
+            {"order_id": "ORD-1", "created_after": "1700000000"},
+            Sequenced(), lambda: "charged",
             unknown_retries=2, unknown_wait=5.0, sleep=naps.append)
         self.assertIsInstance(result, Skipped)
         self.assertEqual(naps, [5.0, 5.0], "one wait per unknown answer, then success")
@@ -64,7 +66,8 @@ class TestGuard(unittest.TestCase):
         naps = []
         with self.assertRaises(UnknownOutcome):
             guard(
-                self.capsule, {"order_id": "ORD-1"}, outage, lambda: "charged",
+                self.capsule,
+                {"order_id": "ORD-1", "created_after": "1700000000"}, outage, lambda: "charged",
                 unknown_retries=2, unknown_wait=1.0, sleep=naps.append)
         self.assertEqual(len(naps), 2, "bounded patience, never an open-ended hang")
         self.assertEqual(len(outage.seen), 3, "initial probe plus two retries")
@@ -72,7 +75,7 @@ class TestGuard(unittest.TestCase):
     def test_guard_treats_money_in_flight_as_unknown(self):
         processing = OneRoute(Response(200, {"data": [{"id": "pi_1", "status": "processing"}]}))
         with self.assertRaises(UnknownOutcome):
-            guard(self.capsule, {"order_id": "ORD-1"}, processing, lambda: "charged")
+            guard(self.capsule, {"order_id": "ORD-1", "created_after": "1700000000"}, processing, lambda: "charged")
 
 
 class TestSaga(unittest.TestCase):

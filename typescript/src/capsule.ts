@@ -88,11 +88,20 @@ const REV_CLASSES = new Set([
 ]);
 const RESULTS = new Set(["landed", "not_landed", "unknown"]);
 
-function rec(value: unknown, where: string): Record<string, unknown> {
+function rec(value: unknown, where: string, allowed?: string[]): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new CapsuleError(`${where}: expected a mapping`);
   }
-  return value as Record<string, unknown>;
+  const doc = value as Record<string, unknown>;
+  if (allowed) {
+    // A typo'd key that silently vanished would leave a rule with no
+    // conditions, and a rule with no conditions matches every response.
+    const extras = Object.keys(doc).filter((k) => !allowed.includes(k));
+    if (extras.length) {
+      throw new CapsuleError(`${where}: unknown key(s) ${extras.sort().join(", ")}`);
+    }
+  }
+  return doc;
 }
 
 function require_(doc: Record<string, unknown>, key: string, where: string): unknown {
@@ -119,7 +128,7 @@ function strMap(value: unknown): Record<string, string> {
 }
 
 function requestFrom(value: unknown, where: string): HttpRequest {
-  const doc = rec(value, where);
+  const doc = rec(value, where, ["method", "path", "query", "headers"]);
   const method = oneOf(
     String(require_(doc, "method", where)).toUpperCase(),
     METHODS,
@@ -134,23 +143,43 @@ function requestFrom(value: unknown, where: string): HttpRequest {
 }
 
 function ruleFrom(value: unknown, where: string): Rule {
-  const doc = rec(value, where);
-  const when = (doc.when ?? {}) as Record<string, unknown>;
+  const doc = rec(value, where, ["when", "result"]);
+  const when = rec(doc.when ?? {}, `${where}.when`, [
+    "status_in", "json_path", "exists", "equals", "count_gte", "where",
+  ]);
+  if ("status_in" in when) {
+    const raw = when.status_in;
+    if (!Array.isArray(raw) || raw.some((x) => typeof x !== "number")) {
+      throw new CapsuleError(`${where}.when.status_in: expected a list of numbers`);
+    }
+  }
+  if ("count_gte" in when && typeof when.count_gte !== "number") {
+    throw new CapsuleError(`${where}.when.count_gte: expected a number`);
+  }
+  if ("exists" in when && typeof when.exists !== "boolean") {
+    throw new CapsuleError(`${where}.when.exists: expected a boolean`);
+  }
+  if ("where" in when) {
+    const w = when.where;
+    if (typeof w !== "object" || w === null || Array.isArray(w)) {
+      throw new CapsuleError(`${where}.when.where: expected a mapping`);
+    }
+  }
   return {
     result: oneOf(require_(doc, "result", where), RESULTS, `${where}.result`) as Result,
     statusIn: "status_in" in when ? (when.status_in as number[]) : undefined,
     jsonPath: "json_path" in when ? String(when.json_path) : undefined,
-    exists: "exists" in when ? Boolean(when.exists) : undefined,
+    exists: "exists" in when ? (when.exists as boolean) : undefined,
     hasEquals: "equals" in when,
     equals: "equals" in when ? when.equals : undefined,
-    countGte: "count_gte" in when ? Number(when.count_gte) : undefined,
+    countGte: "count_gte" in when ? (when.count_gte as number) : undefined,
     where: "where" in when ? (when.where as Record<string, unknown>) : undefined,
   };
 }
 
 function probeFrom(value: unknown): Probe {
   const where = "probe";
-  const doc = rec(value, where);
+  const doc = rec(value, where, ["kind", "handler", "request", "interpret", "confirm"]);
   const kind = oneOf(require_(doc, "kind", where), PROBE_KINDS, `${where}.kind`) as ProbeKind;
   if (kind === "native") {
     return { kind, handler: String(require_(doc, "handler", where)), interpret: [] };
@@ -163,7 +192,7 @@ function probeFrom(value: unknown): Probe {
   const interpret = raw.map((r, i) => ruleFrom(r, `${where}.interpret[${i}]`));
   let confirm: Confirm | undefined;
   if (doc.confirm !== undefined && doc.confirm !== null) {
-    const cdoc = rec(doc.confirm, `${where}.confirm`);
+    const cdoc = rec(doc.confirm, `${where}.confirm`, ["request", "interpret", "notes"]);
     const creq = requestFrom(require_(cdoc, "request", `${where}.confirm`), `${where}.confirm.request`);
     const craw = require_(cdoc, "interpret", `${where}.confirm`) as unknown[];
     if (!Array.isArray(craw) || craw.length === 0) {
@@ -177,7 +206,7 @@ function probeFrom(value: unknown): Probe {
 function compensationFrom(value: unknown): Compensation | undefined {
   if (value === undefined || value === null) return undefined;
   const where = "compensation";
-  const doc = rec(value, where);
+  const doc = rec(value, where, ["kind", "handler", "request", "notes"]);
   const kind = oneOf(require_(doc, "kind", where), COMP_KINDS, `${where}.kind`) as CompKind;
   if (kind === "none") return { kind, notes: doc.notes as string | undefined };
   if (kind === "native") {
@@ -195,9 +224,14 @@ function compensationFrom(value: unknown): Compensation | undefined {
 }
 
 export function capsuleFromDoc(value: unknown, where = "capsule"): Capsule {
-  const doc = rec(value, where);
+  const doc = rec(value, where, [
+    "id", "provider", "operation", "schema_version", "summary", "idempotency",
+    "probe", "reversibility", "compensation", "notes", "source",
+  ]);
 
-  const idemDoc = rec(require_(doc, "idempotency", where), `${where}.idempotency`);
+  const idemDoc = rec(
+    require_(doc, "idempotency", where), `${where}.idempotency`,
+    ["strategy", "header", "keys", "notes"]);
   const idempotency: Idempotency = {
     strategy: oneOf(
       require_(idemDoc, "strategy", `${where}.idempotency`),
@@ -209,7 +243,9 @@ export function capsuleFromDoc(value: unknown, where = "capsule"): Capsule {
     notes: idemDoc.notes as string | undefined,
   };
 
-  const revDoc = rec(require_(doc, "reversibility", where), `${where}.reversibility`);
+  const revDoc = rec(
+    require_(doc, "reversibility", where), `${where}.reversibility`,
+    ["class", "condition"]);
   const cls = oneOf(
     require_(revDoc, "class", `${where}.reversibility`),
     REV_CLASSES,

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 from did_it_land import HttpxTransport, Saga, Skipped, bundled, guard
 
@@ -54,7 +55,10 @@ def main() -> int:
             # your real Stripe create call goes here; return the payment intent id
             raise NotImplementedError("wire up your Stripe create call")
 
-        result = guard(charge, {"order_id": order_id}, stripe, do_charge)
+        context = {
+            "order_id": order_id,
+            "created_after": str(int(time.time()) - 3600)}
+        result = guard(charge, context, stripe, do_charge)
         # The undo template needs the payment intent id, so return THAT, never the
         # order id. A landed probe already carries the id in its evidence.
         if isinstance(result, Skipped):

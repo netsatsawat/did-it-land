@@ -77,13 +77,24 @@ confirm:
   request:
     method: GET
     path: /v1/payment_intents
-    query: {limit: "100"}
+    query: {limit: "100", "created[gte]": "{created_after}"}
   interpret:
+    - when:
+        status_in: [200]
+        json_path: data
+        where: {metadata.order_id: "{order_id}", status: succeeded}
+        count_gte: 1
+      result: landed
     - when: {status_in: [200], json_path: has_more, equals: true}
       result: unknown
     - when: {status_in: [200]}
       result: not_landed
 ```
+
+The confirm leads with the same landed rule as the primary, so a charge sitting in the
+lag-free answer is found, not skipped past. And the time bound is what keeps has_more
+honest: unbounded, a mature account always has more history and the rule would jam on
+unknown forever, but within the order's own window it means a real burst.
 
 If no rule matches, the result is `unknown`. Prefer capsules whose answer is definite.
 An operation that can only ever return `unknown` in the window that matters does not
