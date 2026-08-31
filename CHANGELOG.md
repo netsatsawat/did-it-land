@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1
+
+The TypeScript runtime reaches parity with Python. It gains `guard` and `Saga`, the
+engine-free pair that lets a durable step reconcile before it re-charges and walk a
+failed workflow's recorded effects back in reverse, and the native Postgres handlers,
+so TypeScript now runs all four capsules rather than the three HTTP ones alone. The
+capsules themselves are unchanged. On the release side, npm now publishes through OIDC
+trusted publishing instead of a token, and the PyPI publish skips a version that
+already exists, so a re-run is safe.
+
 ## 0.1.0
 
 First release. Four effect capsules (`stripe.charge`, `s3.delete_object`,

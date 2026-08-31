@@ -3,5 +3,7 @@
 export * from "./capsule.ts";
 export * from "./reconcile.ts";
 export * from "./registry.ts";
+export * from "./adapters.ts";
+export * from "./native.ts";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";
