@@ -174,6 +174,35 @@ and the honest move is to leave them out rather than ship an answer that arrives
 late. The file format is documented in
 [docs/CAPSULE-SCHEMA.md](https://github.com/netsatsawat/did-it-land/blob/main/docs/CAPSULE-SCHEMA.md).
 
+## 🗺️ Reading the coverage map
+
+Whether an action earns a capsule comes down to the same two questions a capsule
+answers: can you ask whether it landed, and can you undo it if it did? Plot every side
+effect on those two axes and the coverage explains itself.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/netsatsawat/did-it-land/main/assets/recovery-map.png" width="88%" alt="Two panels. Top: a scatter of side effects by whether you can get a definite read-only answer that it landed and how cleanly you can undo it. Postgres and Stripe sit in fully recoverable, a merged PR in detect-it-can't-undo-it, and email, webhooks and LLM calls are out of scope. Bottom: a risk matrix showing that a guarded retry stays safe at every blast radius, while a naive retry of a money-moving step ends in a double charge.">
+</p>
+
+The top panel is the capsule map:
+
+- **Fully recoverable** (top right): a Postgres row, a Stripe charge. You can ask with a
+  read-only probe, a lookup or a search, and you can undo, a delete or a refund. These
+  earn capsules.
+- **Detect it, can't undo it** (bottom right): a merged pull request. You can read the
+  merged flag, but a revert is new work, not an undo. The capsule still earns its place
+  by stopping the second merge.
+- **Out of scope** (left): a fire-and-forget email, an SMS, an LLM call. No read-only
+  probe gives a definite answer in the seconds after a crash, so these are left out
+  rather than shipped with an answer that lands too late. Four capsules of fact beat
+  fifty of folklore.
+
+The bottom panel is why `guard` exists. An idempotency key on its own is not enough,
+because it can be pruned after a day, or minted inside the step and lost with the crash.
+The more a retry moves money and the more blindly it fires, the closer it sits to a
+double charge. `guard` asks before it retries and refuses to act on an unknown answer,
+which is what pulls a money-moving step back into the green.
+
 ## 🧰 When you need this
 
 The pattern fits any job that both touches an outside system and can die halfway.
@@ -249,10 +278,10 @@ and kept current.
 
 ## 🗺️ Roadmap
 
-More capsules, each added only together with its weekly real-service check. A
-TypeScript engine adapter. The collection stays small on purpose, around a dozen
-actions whose behavior barely changes, because a big collection that quietly goes
-stale would defeat the whole point.
+More capsules, each added only together with its weekly real-service check. The
+collection stays small on purpose, around a dozen actions whose behavior barely
+changes, because a big collection that quietly goes stale would defeat the whole
+point.
 
 ---
 

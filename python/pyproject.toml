@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "did-it-land"
-version = "0.1.0"
+version = "0.1.1"
 description = "Know whether a side-effect landed, and how to reverse it: a corpus of per-vendor effect capsules for durable and saga workflows."
 readme = "README.md"
 license = { file = "LICENSE" }
