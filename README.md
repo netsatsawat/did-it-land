@@ -283,6 +283,8 @@ collection stays small on purpose, around a dozen actions whose behavior barely
 changes, because a big collection that quietly goes stale would defeat the whole
 point.
 
+The full plan is in [docs/ROADMAP.md](https://github.com/netsatsawat/did-it-land/blob/main/docs/ROADMAP.md), and the operations that are deliberately left out, with the rule every capsule has to pass, are in [docs/WHY-NOT.md](https://github.com/netsatsawat/did-it-land/blob/main/docs/WHY-NOT.md).
+
 ---
 
 Written by [Satsawat Natakarnkitkul](https://satsawat.ai). Companion article: *The Retry
