@@ -47,22 +47,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           registry-url: "https://registry.npmjs.org"
-      - name: build and publish with provenance
+      - name: update npm for trusted publishing
+        run: npm install -g npm@latest
+      - name: publish via OIDC trusted publishing
         run: |
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_TOKEN is not set. Skipping the npm publish."
-            echo "Add the secret and re-run this workflow to publish to npm."
-            exit 0
-          fi
           cd typescript
           npm ci
           npm test
-          npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm publish --access public
