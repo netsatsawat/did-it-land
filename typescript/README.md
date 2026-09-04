@@ -27,9 +27,10 @@ returning `{ statusCode, body }` and throwing `TransportError` on timeouts, as s
 in the quick start's fetch example.
 
 v1 ships four capsules: `stripe.charge`, `s3.delete_object`, `github.merge_pr`, and
-`postgres.insert`. Same corpus as the Python package, with one caveat: the native
-`postgres.insert` capsule needs a handler you register with `registerNative()`, since
-the TS runtime ships no built-in database handlers. Full docs in the repository.
+`postgres.insert`. Same corpus as the Python package. The native `postgres.insert`
+capsule ships built-in handlers that register on import, so it works out of the box once
+you pass a database connection in the context. `registerNative()` is only for adding your
+own native handlers. Full docs in the repository.
 
 Homepage and docs: https://github.com/netsatsawat/did-it-land
 

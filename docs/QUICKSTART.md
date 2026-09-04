@@ -166,9 +166,10 @@ const outcome = await reconcile(
 The other three capsules work the same way in Python with different context fields: bucket and
 key for `s3.delete_object`, owner, repo, and pull number for `github.merge_pr`, and a
 table, key column, and key value plus a database connection for `postgres.insert`.
-One TypeScript exception: `postgres.insert` is a native capsule and the TS runtime
-ships no built-in database handlers, so it needs a handler you register with
-`registerNative()` first. `did-it-land list` shows them, and each YAML file under
+In TypeScript, `postgres.insert` is a native capsule whose handlers ship built in and
+register on import, so it works the same way once you pass a database connection in the
+context. `registerNative()` is only for adding your own native handlers. `did-it-land list`
+shows them, and each YAML file under
 [capsules/](../capsules/) documents its fields and cites its sources. The format
 itself is specified in [CAPSULE-SCHEMA.md](CAPSULE-SCHEMA.md), and adding a capsule
 for your own service is covered in [CONTRIBUTING.md](../CONTRIBUTING.md).
