@@ -1,11 +1,12 @@
 {
   "name": "did-it-land",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Know whether a side-effect landed, and how to reverse it: a corpus of per-vendor effect capsules for durable and saga workflows.",
   "type": "module",
   "license": "MIT",
   "author": "Satsawat Natakarnkitkul",
   "homepage": "https://github.com/netsatsawat/did-it-land",
+  "bugs": { "url": "https://github.com/netsatsawat/did-it-land/issues" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/netsatsawat/did-it-land.git",

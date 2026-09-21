@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "did-it-land"
-version = "0.1.1"
+version = "0.1.2"
 description = "Know whether a side-effect landed, and how to reverse it: a corpus of per-vendor effect capsules for durable and saga workflows."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -31,6 +31,8 @@ dbos = ["dbos>=0.10"]
 [project.urls]
 Homepage = "https://github.com/netsatsawat/did-it-land"
 Documentation = "https://github.com/netsatsawat/did-it-land/blob/main/docs/CAPSULE-SCHEMA.md"
+Changelog = "https://github.com/netsatsawat/did-it-land/blob/main/CHANGELOG.md"
+Issues = "https://github.com/netsatsawat/did-it-land/issues"
 
 [project.scripts]
 did-it-land = "did_it_land.cli:main"
