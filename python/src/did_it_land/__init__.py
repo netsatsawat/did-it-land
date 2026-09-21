@@ -23,7 +23,7 @@ from .reconcile import (
 from .registry import Registry, bundled, load_dir
 from .transport import HttpxTransport, Response, Transport, TransportError
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = [
     "SCHEMA_VERSION",

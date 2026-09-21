@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+A documentation release, no code or capsule changes. The PyPI long description no longer
+opens the Stripe example with `key` used before it is assigned, and the TypeScript
+quickstart no longer tells you to call `registerNative()` for Postgres, which the runtime
+has auto-registered on import since 0.1.1. The README is rewritten to lead a first-time
+reader from the problem to a working example, and ROADMAP and WHY-NOT docs are added.
+
 ## 0.1.1
 
 The TypeScript runtime reaches parity with Python. It gains `guard` and `Saga`, the
