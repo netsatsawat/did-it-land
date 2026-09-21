@@ -6,6 +6,7 @@
   "license": "MIT",
   "author": "Satsawat Natakarnkitkul",
   "homepage": "https://github.com/netsatsawat/did-it-land",
+  "bugs": { "url": "https://github.com/netsatsawat/did-it-land/issues" },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/netsatsawat/did-it-land.git",
